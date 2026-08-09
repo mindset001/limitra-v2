@@ -1,0 +1,146 @@
+openapi: 3.1.0
+info:
+  title: Limitra API (starter stub)
+  version: 0.1.0
+  description: >
+    Starter contract for the Limitra storefront, affiliate, and admin apps.
+    Derived from HANDOFF.md Appendix B. Every protected route MUST re-check the
+    caller's role server-side — never trust the client. Money is integer Naira.
+servers:
+  - url: https://api.limitra.ng/v1
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    Error: { type: object, properties: { error: { type: string }, message: { type: string } } }
+    LoginResponse:
+      type: object
+      properties:
+        token: { type: string }
+        role: { type: string, enum: [customer, affiliate, manager, customer_support, affiliate_manager, super_admin] }
+        redirect: { type: string, example: /affiliate/dashboard }
+    Product:
+      type: object
+      properties:
+        id: { type: integer }
+        slug: { type: string }
+        name: { type: string }
+        brand: { type: string }
+        category_slug: { type: string }
+        price: { type: integer }
+        compare_at: { type: integer, nullable: true }
+        rating: { type: number }
+        review_count: { type: integer }
+        badges: { type: array, items: { type: string } }
+        stock: { type: integer }
+        images: { type: array, items: { type: string } }
+    CheckoutRequest:
+      type: object
+      required: [items, address_id, delivery_method, payment_method]
+      properties:
+        items: { type: array, items: { type: object, properties: { product_id: {type: integer}, qty: {type: integer}, variant: {type: object} } } }
+        address_id: { type: integer }
+        delivery_method: { type: string }
+        payment_method: { type: string }
+        promo_code: { type: string, nullable: true }
+        referral_code: { type: string, nullable: true }
+    Order:
+      type: object
+      properties:
+        id: { type: string, example: LMT-90412 }
+        total: { type: integer }
+        status: { type: string, enum: [pending, processing, shipped, delivered, cancelled, refunded] }
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ---- Auth (public) ----
+  /auth/signup:      { post: { security: [], summary: Create account, responses: { '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/LoginResponse' } } } } } } }
+  /auth/login:       { post: { security: [], summary: Login, responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/LoginResponse' } } } }, '401': { description: Bad credentials } } } }
+  /auth/otp/verify:  { post: { security: [], summary: Verify OTP, responses: { '200': { description: OK } } } }
+  /auth/forgot:      { post: { security: [], summary: Request password reset, responses: { '202': { description: Sent } } } }
+  /auth/reset:       { post: { security: [], summary: Reset password, responses: { '200': { description: OK } } } }
+  /auth/me:          { get:  { summary: Current user, responses: { '200': { description: OK } } } }
+
+  # ---- Catalog (public) ----
+  /products:
+    get:
+      security: []
+      summary: List/search products
+      parameters:
+        - { name: cat,  in: query, schema: { type: string } }
+        - { name: sub,  in: query, schema: { type: string } }
+        - { name: q,    in: query, schema: { type: string } }
+        - { name: sort, in: query, schema: { type: string, enum: [featured, price-low, price-high, rating, newest] } }
+        - { name: min,  in: query, schema: { type: integer } }
+        - { name: max,  in: query, schema: { type: integer } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: '#/components/schemas/Product' } }, total: { type: integer }, page: { type: integer } } } } }
+  /products/{slug}:          { get: { security: [], summary: Product detail, parameters: [{ name: slug, in: path, required: true, schema: { type: string } }], responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Product' } } } }, '404': { description: Not found } } } }
+  /products/{slug}/reviews:  { get: { security: [], summary: List reviews, parameters: [{ name: slug, in: path, required: true, schema: { type: string } }], responses: { '200': { description: OK } } }, post: { summary: Add review, parameters: [{ name: slug, in: path, required: true, schema: { type: string } }], responses: { '201': { description: Created } } } }
+  /categories:               { get: { security: [], summary: Category tree, responses: { '200': { description: OK } } } }
+
+  # ---- Cart & checkout ----
+  /cart/items:        { get: { summary: Get cart }, post: { summary: Add item }, patch: { summary: Update qty }, delete: { summary: Remove item } }
+  /checkout/quote:    { post: { summary: Price a cart (totals, shipping, promo), responses: { '200': { description: OK } } } }
+  /checkout:
+    post:
+      summary: Place order (creates order + payment intent)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CheckoutRequest' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
+        '402': { description: Payment required/failed }
+  /payments/webhook:  { post: { security: [], summary: Gateway callback (verify signature; mark paid), responses: { '200': { description: OK } } } }
+
+  # ---- Account ----
+  /me:                { get: { summary: Profile }, patch: { summary: Update profile } }
+  /me/addresses:      { get: { summary: List }, post: { summary: Add } }
+  /me/addresses/{id}: { patch: { summary: Update, parameters: [{ name: id, in: path, required: true, schema: { type: integer } }] }, delete: { summary: Delete, parameters: [{ name: id, in: path, required: true, schema: { type: integer } }] } }
+  /me/cards:          { get: { summary: List }, post: { summary: Add (tokenized) } }
+  /me/orders:         { get: { summary: Order history } }
+  /orders/{id}/track: { get: { summary: Tracking timeline, parameters: [{ name: id, in: path, required: true, schema: { type: string } }] } }
+  /me/wishlist:       { get: { summary: List }, post: { summary: Toggle item } }
+  /me/rewards:        { get: { summary: LimCash + coupons } }
+  /me/referrals:      { get: { summary: Referral history } }
+  /me/referrals/invite: { post: { summary: Send invite } }
+
+  # ---- Affiliate (role: affiliate) ----
+  /affiliate/overview:      { get: { summary: KPIs } }
+  /affiliate/performance:   { get: { summary: Charts data } }
+  /affiliate/links:         { get: { summary: List links }, post: { summary: Generate link } }
+  /affiliate/promo-codes:   { get: { summary: List }, post: { summary: Create (server enforces per-affiliate limit), responses: { '201': { description: Created }, '409': { description: Limit reached or code taken } } } }
+  /affiliate/promo-codes/{code}: { patch: { summary: Pause/activate, parameters: [{ name: code, in: path, required: true, schema: { type: string } }] }, delete: { summary: Delete, parameters: [{ name: code, in: path, required: true, schema: { type: string } }] } }
+  /affiliate/earnings:      { get: { summary: Earnings + transactions } }
+  /affiliate/withdrawals:   { get: { summary: History }, post: { summary: Request payout, responses: { '201': { description: Requested }, '422': { description: Below min or over balance } } } }
+  /affiliate/referrals:     { get: { summary: Referral tracking } }
+  /affiliate/leaderboard:   { get: { summary: Rankings } }
+
+  # ---- AI ----
+  /elo:
+    post:
+      summary: Elo assistant (proxy to model server-side; never expose key)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { message: { type: string }, image_refs: { type: array, items: { type: string } }, history: { type: array, items: { type: object } } } } } } }
+      responses: { '200': { description: OK }, '429': { description: Rate limited } }
+
+  # ---- Admin (role: super_admin / scoped) ----
+  /admin/products:    { get: { summary: List }, post: { summary: Create } }
+  /admin/products/{id}: { patch: { summary: Update, parameters: [{ name: id, in: path, required: true, schema: { type: integer } }] }, delete: { summary: Delete, parameters: [{ name: id, in: path, required: true, schema: { type: integer } }] } }
+  /admin/orders:      { get: { summary: List/filter } }
+  /admin/orders/{id}: { patch: { summary: Update status, parameters: [{ name: id, in: path, required: true, schema: { type: string } }] } }
+  /admin/customers:   { get: { summary: List } }
+  /admin/customers/{id}: { patch: { summary: Suspend/restore/reset-pwd, parameters: [{ name: id, in: path, required: true, schema: { type: integer } }] } }
+  /admin/affiliates:  { get: { summary: List } }
+  /admin/affiliates/{id}: { patch: { summary: Approve/suspend/pay, parameters: [{ name: id, in: path, required: true, schema: { type: integer } }] } }
+  /admin/coupons:     { get: { summary: List }, post: { summary: Create } }
+  /admin/spin:        { get: { summary: Rewards + probabilities }, post: { summary: Update config } }
+  /admin/videos:      { get: { summary: List }, post: { summary: Upload/assign } }
+  /admin/cms:         { get: { summary: Content blocks }, patch: { summary: Update } }
+  /admin/roles:       { get: { summary: Roles & members }, post: { summary: Assign/create } }
+  /admin/inventory:   { get: { summary: Stock + alerts } }
+  /admin/analytics:   { get: { summary: Dashboard metrics } }
+  /admin/settings:    { get: { summary: Read settings }, post: { summary: Update (e.g. aff_promo_max, free_ship_threshold) } }

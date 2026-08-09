@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+<title>Limitra — Premium Tech Marketplace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="chrome.css" />
+<link rel="stylesheet" href="pages.css" />
+<link rel="stylesheet" href="shop.css" />
+<link rel="stylesheet" href="flows.css" />
+<link rel="stylesheet" href="affiliate.css" />
+<link rel="stylesheet" href="accents.css" />
+<link rel="stylesheet" href="lucy.css" />
+<style>
+  /* ---- Print-ready overrides ---- */
+  @page { size: portrait; margin: 1cm; }
+
+  @media print {
+    html, body {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      background: #fff !important;
+    }
+
+    /* flatten sticky/fixed chrome so it doesn't repeat or overlap */
+    .site-head { position: static !important; box-shadow: none !important; }
+    .site-head::after { display: none !important; }
+
+    /* the ambient fixed glow would tile on every page */
+    body::before { display: none !important; }
+
+    /* hide purely-interactive elements that make no sense on paper */
+    .lucy-fab, .lucy-panel, .lucy-pulse,
+    .mob-bottom, .mob-search, .hamb,
+    .tweaks-host, .toasts, .toast,
+    .hero-nav, .hero-arrow, .hero-dots,
+    .mini-cart, .mini-cart-overlay, .mobile-menu, .mobile-menu-overlay,
+    .search-modal-overlay {
+      display: none !important;
+    }
+
+    /* kill motion + hover lift so captures are crisp and static */
+    *, *::before, *::after {
+      animation: none !important;
+      transition: none !important;
+      scroll-behavior: auto !important;
+    }
+
+    /* avoid clipping content across page edges */
+    .wrap, .page, .app-main { overflow: visible !important; }
+
+    /* keep cohesive blocks together where possible */
+    .pcard, .cat-tile, .flash-band, .hero, .testimonial, .why-card,
+    .help-cat, .aff-perk, .aff-tier, .promo-card, .stat-card {
+      break-inside: avoid;
+    }
+
+    /* give major sections a little breathing room */
+    section, .sec { break-inside: avoid-page; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script src="data.js"></script>
+<script type="text/babel" src="store.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="tweaks.jsx"></script>
+<script type="text/babel" src="icons.jsx"></script>
+<script type="text/babel" src="components.jsx"></script>
+<script type="text/babel" src="forms.jsx"></script>
+<script type="text/babel" src="chrome.jsx"></script>
+<script type="text/babel" src="pages-home.jsx"></script>
+<script type="text/babel" src="pages-shop.jsx"></script>
+<script type="text/babel" src="pages-product.jsx"></script>
+<script type="text/babel" src="pages-cart.jsx"></script>
+<script type="text/babel" src="pages-account.jsx"></script>
+<script type="text/babel" src="pages-affiliate.jsx"></script>
+<script type="text/babel" src="lucy.jsx"></script>
+<script type="text/babel" src="pages-auth.jsx"></script>
+<script type="text/babel" src="app.jsx"></script>
+
+<!-- Auto-print once the app has mounted and fonts are ready -->
+<script>
+  (function () {
+    var printed = false;
+    function appReady() {
+      return document.querySelector('.hero-carousel') ||
+             document.querySelector('.app-main') ||
+             (document.getElementById('root') && document.getElementById('root').children.length > 0);
+    }
+    function fire() {
+      if (printed) return; printed = true;
+      setTimeout(function () { window.print(); }, 600);
+    }
+    function start() {
+      var fontsReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+      Promise.resolve(fontsReady).then(function () {
+        var tries = 0;
+        (function wait() {
+          if (appReady() || tries > 60) fire();
+          else { tries++; setTimeout(wait, 150); }
+        })();
+      });
+    }
+    if (document.readyState === 'complete') start();
+    else window.addEventListener('load', start);
+  })();
+</script>
+</body>
+</html>

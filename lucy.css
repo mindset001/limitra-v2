@@ -1,0 +1,126 @@
+/* ============ LIMITRA — Elo AI assistant ============ */
+.lucy-fab {
+  position: fixed; right: 26px; bottom: 26px; z-index: 1000;
+  min-width: 60px; height: 52px; padding: 0 22px; border-radius: var(--r-pill); gap: 9px;
+  background: var(--navy);
+  color: #fff; display: inline-flex; align-items: center; justify-content: center;
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--navy) 40%, transparent);
+  transition: transform .2s var(--ease), box-shadow .25s var(--ease);
+}
+/* hide the assistant button whenever any drawer (cart / menu / filters) is open */
+body:has(.drawer.on) .lucy-fab,
+body:has(.search-modal-overlay) .lucy-fab,
+body:has(.scrim.on) .lucy-fab { opacity: 0; pointer-events: none; visibility: hidden; }
+.lucy-fab::after { content: ''; position: absolute; inset: 0; border-radius: var(--r-pill); background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.28), transparent 62%); pointer-events: none; }
+.lucy-fab.open::after { display: none; }
+.lucy-fab:hover { transform: translateY(-3px) scale(1.04); box-shadow: 0 18px 42px color-mix(in srgb, var(--primary) 55%, transparent); }
+.lucy-fab.open { background: var(--surface-3); color: var(--text); width: 56px; min-width: 0; padding: 0; border-radius: 50%; }
+.lucy-fab.open::after { display: none; }
+.lucy-fab-img { width: 62%; height: 62%; object-fit: contain; display: block; position: relative; z-index: 1; }
+.lucy-fab-badge { position: relative; z-index: 1; width: 26px; height: 26px; display: grid; place-items: center; flex: none; }
+.lucy-fab-badge img { width: 100%; height: 100%; object-fit: contain; }
+.lucy-avatar.has-img, .lucy-msg-av.has-img { overflow: hidden; }
+.lucy-avatar.has-img img, .lucy-msg-av.has-img img { width: 82%; height: 82%; object-fit: contain; filter: brightness(0) invert(1); }
+.lucy-fab-text { position: relative; z-index: 1; font-family: var(--font-display); font-weight: 700; font-size: 14px; letter-spacing: -.01em; color: #fff; white-space: nowrap; }
+.lucy-av-text { font-family: var(--font-display); font-weight: 700; font-size: 15px; color: #fff; letter-spacing: -.01em; }
+.lucy-av-text.sm { font-size: 10.5px; }
+.lucy-pulse { position: absolute; inset: 0; border-radius: var(--r-pill); box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); animation: lucyPulse 2.4s var(--ease) infinite; }
+@keyframes lucyPulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent); } 70% { box-shadow: 0 0 0 14px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+[data-glow="off"] .lucy-pulse { display: none; }
+
+.lucy-panel {
+  position: fixed; right: 26px; bottom: 100px; z-index: 1000;
+  width: 380px; max-width: calc(100vw - 32px); height: 560px; max-height: calc(100vh - 140px);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl);
+  box-shadow: var(--shadow-pop); display: flex; flex-direction: column; overflow: hidden;
+  animation: lucyIn .26s var(--ease);
+}
+@keyframes lucyIn { from { opacity: 0; transform: translateY(20px) scale(.97); } to { opacity: 1; transform: none; } }
+
+.lucy-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 14px; background: var(--surface); border-bottom: 1px solid var(--border); color: var(--text); flex: none; }
+.lucy-head-center { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.lucy-head-center .lucy-avatar { width: 34px; height: 34px; background: linear-gradient(140deg, var(--primary), var(--navy-700)); }
+.lucy-head b { font-family: var(--font-display); font-weight: 700; font-size: 13.5px; color: var(--text); }
+.lucy-head-btn { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: var(--text-muted); transition: background .15s; flex: none; }
+.lucy-head-btn:hover { background: var(--surface-2); color: var(--text); }
+.lucy-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ADE80; box-shadow: 0 0 0 3px rgba(74,222,128,.25); }
+.lucy-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--primary); display: grid; place-items: center; flex: none; }
+.lucy-av-text { color: #fff; }
+
+.lucy-body { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 14px; background: var(--bg-subtle); }
+.lucy-msg { display: flex; gap: 9px; align-items: flex-end; max-width: 88%; }
+.lucy-msg.user { align-self: flex-end; flex-direction: row-reverse; }
+.lucy-msg.assistant { align-self: flex-start; }
+.lucy-msg-av { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; display: grid; place-items: center; flex: none; }
+.lucy-msg-av.user { background: linear-gradient(135deg, var(--navy), var(--navy-700)); }
+[data-theme="dark"] .lucy-msg-av.user { background: linear-gradient(135deg, var(--primary), #3A48A8); }
+.lucy-bubble { padding: 11px 15px; border-radius: 18px; font-size: 14px; line-height: 1.5; text-wrap: pretty; }
+.lucy-msg.assistant .lucy-bubble { background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 6px; color: var(--text); box-shadow: var(--shadow-sm); }
+.lucy-msg.user .lucy-bubble { background: var(--navy); color: #fff; border-bottom-right-radius: 6px; }
+[data-theme="dark"] .lucy-msg.user .lucy-bubble { background: var(--primary); }
+
+/* in-chat product cards */
+.lucy-cards { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.lucy-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 12px; box-shadow: var(--shadow-sm); }
+.lucy-msg.assistant .lucy-bubble .lucy-card { width: 200px; }
+.lucy-card-thumb { width: 100%; aspect-ratio: 4/3; border-radius: 12px; overflow: hidden; background: var(--surface-2); cursor: pointer; }
+.lucy-card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.lucy-card-info { padding: 11px 2px 12px; }
+.lucy-card-info b { font-family: var(--font-display); font-weight: 600; font-size: 13.5px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lucy-card-price { display: block; font-family: var(--font-display); font-weight: 700; font-size: 16px; margin-top: 5px; color: var(--text); }
+.lucy-card-cta { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 7px; background: var(--navy); color: #fff; font-family: var(--font-display); font-weight: 700; font-size: 13.5px; padding: 11px; border-radius: 99px; transition: filter .15s, transform .12s var(--ease); }
+.lucy-card-cta:hover { filter: brightness(1.08); }
+.lucy-card-cta:active { transform: scale(.97); }
+[data-theme="dark"] .lucy-card-cta { background: var(--primary); }
+.lucy-bubble.typing { display: flex; gap: 4px; padding: 14px; }
+.lucy-bubble.typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); animation: lucyType 1.2s infinite; }
+.lucy-bubble.typing i:nth-child(2) { animation-delay: .2s; }
+.lucy-bubble.typing i:nth-child(3) { animation-delay: .4s; }
+@keyframes lucyType { 0%, 60%, 100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+
+.lucy-sugg { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 18px 12px; background: var(--bg-subtle); }
+.lucy-sugg button { font-family: var(--font-display); font-weight: 600; font-size: 12.5px; color: var(--primary); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-pill); padding: 8px 13px; transition: all .15s; }
+.lucy-sugg button:hover { background: var(--primary-soft); border-color: var(--primary); }
+
+.lucy-input { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--border); background: var(--surface); flex: none; }
+.lucy-attach { width: 40px; height: 40px; border-radius: 50%; flex: none; display: grid; place-items: center; color: var(--text-muted); background: var(--surface-2); transition: background .15s, color .15s, transform .12s var(--ease); }
+.lucy-attach:hover { color: var(--primary); background: var(--primary-soft); }
+.lucy-attach:active { transform: scale(.92); }
+.lucy-input .lucy-text { flex: 1; border: 1.5px solid var(--border); border-radius: var(--r-pill); padding: 11px 16px; outline: none; background: var(--surface-2); font-size: 14px; color: var(--text); transition: border-color .15s; }
+.lucy-input .lucy-text:focus { border-color: var(--primary); background: var(--surface); }
+
+/* image previews (staged) */
+.lucy-previews { display: flex; gap: 8px; padding: 10px 14px 0; flex-wrap: wrap; background: var(--surface); }
+.lucy-prev { position: relative; width: 56px; height: 56px; border-radius: var(--r-sm); overflow: hidden; border: 1px solid var(--border); animation: lucyIn .2s var(--ease); }
+.lucy-prev img { width: 100%; height: 100%; object-fit: cover; }
+.lucy-prev-x { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; display: grid; place-items: center; }
+.lucy-err { padding: 8px 14px 0; font-family: var(--font-display); font-weight: 600; font-size: 12px; color: var(--red); background: var(--surface); }
+
+/* images inside chat bubbles */
+.lucy-msg-imgs { display: grid; gap: 5px; margin-bottom: 7px; }
+.lucy-msg-imgs.n1 { grid-template-columns: 1fr; }
+.lucy-msg-imgs.n2 { grid-template-columns: 1fr 1fr; }
+.lucy-msg-imgs.n3 { grid-template-columns: 1fr 1fr 1fr; }
+.lucy-msg-imgs img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; max-height: 160px; }
+.lucy-msg.user .lucy-msg-imgs img { border: 1px solid rgba(255,255,255,.25); }
+
+/* drag-and-drop overlay */
+.lucy-dropzone { position: absolute; inset: 64px 14px 78px; z-index: 5; border: 2px dashed var(--primary); border-radius: var(--r-lg); background: color-mix(in srgb, var(--primary) 12%, var(--surface)); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--primary); font-family: var(--font-display); font-weight: 700; font-size: 15px; }
+
+/* analysing indicator */
+.lucy-analyzing { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 600; font-size: 13px; color: var(--text-muted); }
+.lucy-spin { width: 15px; height: 15px; border-radius: 50%; border: 2px solid var(--border-2); border-top-color: var(--primary); animation: spin .7s linear infinite; }
+.lucy-input input { flex: 1; border: 1.5px solid var(--border); border-radius: var(--r-pill); padding: 11px 16px; outline: none; background: var(--surface-2); font-size: 14px; color: var(--text); transition: border-color .15s; }
+.lucy-input input:focus { border-color: var(--primary); background: var(--surface); }
+.lucy-send { width: 42px; height: 42px; border-radius: 50%; background: var(--primary); color: #fff; display: grid; place-items: center; flex: none; transition: background .15s, opacity .15s; }
+.lucy-send:hover:not(:disabled) { background: var(--primary-hover); }
+.lucy-send:disabled { opacity: .4; cursor: not-allowed; }
+
+@media (max-width: 860px) {
+  .lucy-fab { bottom: 78px; right: 16px; height: 50px; padding: 0 18px; z-index: 700; }
+  body:has(.drawer.on) .lucy-fab,
+  body:has(.search-modal-overlay) .lucy-fab,
+  body:has(.scrim.on) .lucy-fab { opacity: 0; pointer-events: none; visibility: hidden; }
+  .lucy-fab.open { width: 50px; padding: 0; }
+  .lucy-panel { bottom: 78px; right: 8px; left: 8px; width: auto; max-width: none; height: calc(100vh - 150px); }
+}

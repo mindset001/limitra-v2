@@ -1,0 +1,99 @@
+/* ============ LIMITRA — Channels ============ */
+
+/* brand color tokens (shared across channel UI) */
+.ch-card.whatsapp, .cm-h.whatsapp, .ch-chip.whatsapp, .ch-how-tab.whatsapp.on, .ch-ic.whatsapp { --ch: #25D366; }
+.ch-card.facebook, .cm-h.facebook, .ch-chip.facebook, .ch-how-tab.facebook.on, .ch-ic.facebook { --ch: #1877F2; }
+.ch-card.instagram, .cm-h.instagram, .ch-chip.instagram, .ch-how-tab.instagram.on, .ch-ic.instagram { --ch: #D6249F; }
+.ch-card.x, .cm-h.x, .ch-chip.x, .ch-how-tab.x.on, .ch-ic.x { --ch: var(--text); }
+.ch-card.app, .cm-h.app, .ch-chip.app, .ch-how-tab.app.on, .ch-ic.app { --ch: var(--primary); }
+.ch-card.email, .cm-h.email, .ch-chip.email, .ch-how-tab.email.on, .ch-ic.email { --ch: var(--accent); }
+
+/* hero */
+.ch-hero { background: linear-gradient(135deg, var(--navy), var(--navy-700)); padding: 60px 0 56px; margin-bottom: 44px; text-align: center; position: relative; overflow: hidden; }
+.ch-hero .wrap { position: relative; z-index: 1; }
+.ch-hero .badge-soft { background: rgba(255,255,255,.16); color: #fff; margin-bottom: 18px; }
+.ch-hero h1 { color: #fff; font-size: clamp(32px, 4.4vw, 50px); line-height: 1.05; letter-spacing: -.025em; }
+.ch-hero p { color: rgba(255,255,255,.82); font-size: 16.5px; line-height: 1.6; max-width: 620px; margin: 18px auto 26px; text-wrap: pretty; }
+.ch-hero-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.ch-chip { width: 48px; height: 48px; border-radius: 50%; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22); color: #fff; display: grid; place-items: center; transition: transform .18s var(--ease), background .18s; }
+.ch-chip:hover { transform: translateY(-3px); background: #fff; color: var(--ch); }
+.ch-chip.x:hover { color: #000; }
+
+/* channel cards */
+.ch-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 56px; }
+.ch-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 24px; position: relative; overflow: hidden; transition: transform .2s var(--ease), box-shadow .22s var(--ease), border-color .2s; }
+.ch-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--ch); opacity: .9; }
+.ch-card:hover { transform: translateY(-4px); box-shadow: 0 16px 38px color-mix(in srgb, var(--ch) 18%, transparent); border-color: color-mix(in srgb, var(--ch) 40%, var(--border-2)); }
+.ch-card-head { display: flex; align-items: center; gap: 13px; margin-bottom: 14px; }
+.ch-ic { width: 48px; height: 48px; border-radius: var(--r-md); background: color-mix(in srgb, var(--ch) 14%, transparent); color: var(--ch); display: grid; place-items: center; flex: none; }
+.ch-card-head b { font-family: var(--font-display); font-weight: 700; font-size: 16.5px; display: block; }
+.ch-tag { display: inline-block; font-family: var(--font-display); font-weight: 700; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--ch); margin-top: 3px; }
+.ch-tag.muted-tag { color: var(--text-faint); }
+.ch-blurb { font-size: 14px; line-height: 1.6; color: var(--text-muted); margin-bottom: 16px; text-wrap: pretty; }
+.ch-caps { display: flex; flex-direction: column; gap: 9px; }
+.ch-caps li { display: flex; align-items: center; gap: 9px; font-family: var(--font-display); font-weight: 600; font-size: 13.5px; color: var(--text); }
+.ch-caps svg { color: var(--ch); flex: none; }
+
+/* capability matrix */
+.ch-matrix-sec { margin-bottom: 56px; }
+.ch-matrix-sec .aff-sec-head { text-align: center; max-width: 560px; margin: 0 auto 30px; }
+.ch-matrix-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); }
+.ch-matrix { width: 100%; border-collapse: collapse; min-width: 680px; }
+.ch-matrix th, .ch-matrix td { padding: 14px 12px; text-align: center; border-bottom: 1px solid var(--border); }
+.ch-matrix thead th { background: var(--surface-2); }
+.cm-corner { text-align: left !important; font-family: var(--font-display); font-weight: 700; font-size: 13px; color: var(--text-muted); }
+.cm-h { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 5px; background: color-mix(in srgb, var(--ch) 14%, transparent); color: var(--ch); }
+.ch-matrix thead small { font-family: var(--font-display); font-weight: 700; font-size: 11.5px; color: var(--text); }
+.cm-cap { text-align: left !important; font-family: var(--font-display); font-weight: 600; font-size: 13.5px; color: var(--text); white-space: nowrap; }
+.cm-cap span { display: inline-flex; align-items: center; gap: 9px; }
+.cm-cap svg { color: var(--text-faint); flex: none; }
+.ch-matrix tbody tr:last-child td { border-bottom: none; }
+.ch-matrix tbody tr:hover td { background: var(--surface-2); }
+.cm-yes { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--success-soft); color: var(--success); }
+.cm-no { color: var(--border-2); font-weight: 700; }
+.ch-matrix-note { display: flex; align-items: center; gap: 8px; justify-content: center; margin-top: 14px; font-size: 13px; color: var(--text-faint); }
+.ch-matrix-note svg { color: var(--primary); }
+
+/* steps */
+.ch-link-sec { margin-bottom: 52px; }
+.ch-link-sec .aff-sec-head { text-align: center; max-width: 600px; margin: 0 auto 34px; }
+.ch-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
+.ch-step { position: relative; padding-top: 6px; }
+.ch-step-num { position: absolute; top: -4px; right: 0; font-family: var(--font-display); font-weight: 700; font-size: 56px; line-height: 1; color: var(--surface-3); z-index: 0; }
+.ch-step-ic { position: relative; width: 50px; height: 50px; border-radius: var(--r-lg); background: var(--primary); color: #fff; display: grid; place-items: center; margin-bottom: 14px; box-shadow: var(--shadow-sm); }
+.ch-step b { position: relative; font-family: var(--font-display); font-weight: 700; font-size: 16px; display: block; margin-bottom: 7px; }
+.ch-step p { position: relative; font-size: 13.5px; line-height: 1.6; text-wrap: pretty; }
+
+/* per-channel how-to */
+.ch-how-sec { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl); padding: 26px; margin-bottom: 40px; }
+.ch-how-tabs { display: flex; flex-wrap: wrap; gap: 9px; margin-bottom: 24px; }
+.ch-how-tab { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 600; font-size: 13.5px; color: var(--text-muted); background: var(--surface-2); border: 1.5px solid var(--border); border-radius: var(--r-pill); padding: 9px 15px; transition: all .15s; }
+.ch-how-tab:hover { border-color: var(--border-2); color: var(--text); }
+.ch-how-tab.on { background: var(--ch); border-color: var(--ch); color: #fff; }
+.ch-how-tab.x.on { color: var(--surface); }
+[data-theme="dark"] .ch-how-tab.x.on { color: #000; background: #fff; border-color: #fff; }
+.ch-how-body { display: flex; gap: 20px; align-items: flex-start; }
+.ch-how-icon { flex: none; }
+.ch-how-body .ch-ic { width: 60px; height: 60px; border-radius: var(--r-lg); }
+.ch-how-body h3 { font-size: 20px; margin-bottom: 8px; }
+.ch-how-body p { font-size: 15px; line-height: 1.6; max-width: 560px; }
+.ch-how-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+
+/* CTA */
+.ch-cta { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 12px; padding: 28px 32px; border-radius: var(--r-xl); background: linear-gradient(120deg, var(--primary-soft), transparent), var(--surface); border: 1px solid var(--border); }
+.ch-cta b { font-family: var(--font-display); font-weight: 700; font-size: 19px; display: block; margin-bottom: 4px; }
+.ch-cta .muted { font-size: 14px; }
+
+@media (max-width: 980px) {
+  .ch-grid { grid-template-columns: repeat(2, 1fr); }
+  .ch-steps { grid-template-columns: repeat(2, 1fr); gap: 26px 22px; }
+}
+@media (max-width: 600px) {
+  .ch-hero { padding: 44px 0 40px; }
+  .ch-hero h1 { font-size: 28px; }
+  .ch-grid { grid-template-columns: 1fr; }
+  .ch-steps { grid-template-columns: 1fr; }
+  .ch-how-body { flex-direction: column; gap: 14px; }
+  .ch-cta { flex-direction: column; align-items: flex-start; }
+  .ch-cta .btn { width: 100%; }
+}

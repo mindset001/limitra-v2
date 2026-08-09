@@ -1,0 +1,57 @@
+/* ============ LIMITRA — Spin & Win ============ */
+.spin-overlay { position: fixed; inset: 0; z-index: 1500; background: rgba(4,8,20,.72); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 20px; animation: modalFade .2s var(--ease); overflow: hidden; }
+.spin-modal { position: relative; width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl); box-shadow: var(--shadow-pop); padding: 28px 26px 22px; text-align: center; animation: modalPop .28s var(--ease); }
+.spin-x { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border-radius: 50%; background: var(--surface-2); color: var(--text-muted); font-size: 15px; display: grid; place-items: center; }
+.spin-x:hover { background: var(--surface-3); color: var(--text); }
+.spin-head { margin-bottom: 18px; }
+.spin-emoji { font-size: 34px; display: block; }
+.spin-emoji.big { font-size: 48px; animation: pop .5s var(--ease); }
+.spin-head h2 { font-size: 24px; margin: 6px 0 6px; }
+.spin-head p { color: var(--text-muted); font-size: 14.5px; }
+
+/* wheel */
+.wheel-wrap { position: relative; width: 280px; height: 280px; margin: 6px auto 4px; }
+.wheel-ptr { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); z-index: 4; width: 0; height: 0; border-left: 13px solid transparent; border-right: 13px solid transparent; border-top: 22px solid var(--accent); filter: drop-shadow(0 2px 3px rgba(0,0,0,.3)); }
+.wheel { width: 100%; height: 100%; border-radius: 50%; position: relative; box-shadow: 0 0 0 8px var(--surface), 0 0 0 11px var(--border-2), var(--shadow-lg); }
+.wheel-label { position: absolute; inset: 0; display: flex; justify-content: center; padding-top: 16px; transform-origin: 50% 50%; }
+.wheel-label b { font-family: var(--font-display); font-weight: 700; font-size: 12.5px; color: #fff; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+.wheel-hub { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 3; width: 66px; height: 66px; border-radius: 50%; background: #fff; color: var(--navy); font-family: var(--font-display); font-weight: 700; font-size: 15px; box-shadow: var(--shadow-md), 0 0 0 4px rgba(255,255,255,.5); transition: transform .15s var(--ease); }
+.wheel-hub:hover:not(:disabled) { transform: translate(-50%,-50%) scale(1.06); }
+.wheel-hub:disabled { cursor: default; }
+.spin-terms { font-size: 11.5px; color: var(--text-faint); margin-top: 12px; }
+.spin-terms a { color: var(--primary); cursor: pointer; }
+
+/* result */
+.spin-result { padding: 6px 0; }
+.spin-result h2 { font-size: 26px; margin: 8px 0 8px; }
+.sr-prize { font-size: 15.5px; color: var(--text-muted); margin-bottom: 16px; }
+.sr-prize b { color: var(--accent); }
+.sr-code { background: var(--surface-2); border: 1px dashed var(--border-2); border-radius: var(--r-md); padding: 14px 16px; margin-bottom: 12px; }
+.sr-code small { font-family: var(--font-display); font-weight: 700; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); }
+.sr-code-row { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
+.sr-code-row code { flex: 1; font-family: var(--font-display); font-weight: 700; font-size: 17px; letter-spacing: .04em; color: var(--primary); }
+.spin-later { display: block; width: 100%; margin-top: 10px; font-family: var(--font-display); font-weight: 600; font-size: 13.5px; color: var(--text-muted); }
+.spin-later:hover { color: var(--text); }
+
+/* confetti */
+.confetti { position: fixed; inset: 0; z-index: 1499; pointer-events: none; overflow: hidden; }
+.confetti span { position: absolute; top: -16px; width: 9px; height: 14px; border-radius: 2px; animation: confFall linear forwards; }
+@keyframes confFall { to { transform: translateY(105vh) rotate(720deg); opacity: .9; } }
+
+/* my rewards (account) */
+.rw-list { display: flex; flex-direction: column; gap: 12px; }
+.rw-card { display: flex; align-items: center; gap: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px 18px; position: relative; overflow: hidden; }
+.rw-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--accent); }
+.rw-card.used { opacity: .6; }
+.rw-card.used::before { background: var(--text-faint); }
+.rw-ic { width: 50px; height: 50px; border-radius: var(--r-md); background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex: none; }
+.rw-main { flex: 1; min-width: 0; }
+.rw-main b { font-family: var(--font-display); font-weight: 700; font-size: 16px; display: block; }
+.rw-code { font-family: var(--font-display); font-weight: 700; font-size: 13px; color: var(--primary); letter-spacing: .03em; }
+.rw-meta { font-size: 12.5px; color: var(--text-faint); margin-top: 2px; }
+.rw-copy { flex: none; }
+
+@media (max-width: 480px) {
+  .wheel-wrap { width: 240px; height: 240px; }
+  .spin-modal { padding: 24px 20px 18px; }
+}

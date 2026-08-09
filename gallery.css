@@ -1,0 +1,17 @@
+/* Gallery layout — neutralizes sticky/fixed chrome so each screen sits in its own frame */
+body { background: #6B7280; }
+.gallery { padding: 40px 0 80px; }
+.g-head { max-width: 1280px; margin: 0 auto 36px; display: flex; align-items: center; gap: 18px; background: #fff; border-radius: 18px; padding: 20px 26px; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
+.g-head b { font-family: var(--font-display); font-weight: 700; font-size: 18px; color: #0F1220; display: block; }
+.g-head span { font-size: 13px; color: #6B7280; }
+.g-stack { display: flex; flex-direction: column; gap: 56px; align-items: center; }
+.g-frame { width: 1280px; max-width: calc(100vw - 32px); }
+.g-label { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 700; font-size: 14px; color: #fff; margin-bottom: 12px; letter-spacing: .01em; }
+.g-dotmark { width: 10px; height: 10px; border-radius: 50%; background: #F67208; box-shadow: 0 0 0 4px rgba(246,114,8,.3); }
+.g-canvas { width: 1280px; max-width: 100%; background: var(--bg); border-radius: 16px; overflow: hidden; box-shadow: 0 18px 50px rgba(0,0,0,.28); }
+
+/* each frame is its own document context — disable sticky headers & in-page fixed bits */
+.g-canvas .site-head { position: static !important; }
+.g-canvas .site-head::after { display: none; }
+.g-canvas .auth-screen { min-height: 620px; }
+.g-canvas .app-main { min-height: 0; }

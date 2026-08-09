@@ -1,0 +1,88 @@
+/* ============================================================
+   LIMITRA — Ambient glows & accents (subtle, brand-tied)
+   Colours derive from --primary / --accent so they follow the
+   accent tweak. Faint in light mode, richer in dark mode.
+   Disabled when <html data-glow="off">.
+   ============================================================ */
+
+/* ---------- ambient page glow ---------- */
+body::before {
+  content: ''; position: fixed; inset: -10% -10% auto -10%; height: 90vh; z-index: -1;
+  pointer-events: none; opacity: .55; transition: opacity .4s var(--ease);
+  background:
+    radial-gradient(48% 42% at 82% -8%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 72%),
+    radial-gradient(50% 40% at 2% 4%, color-mix(in srgb, var(--primary) 22%, transparent), transparent 72%);
+}
+[data-theme="dark"] body::before { opacity: .8; }
+[data-glow="off"] body::before { opacity: 0; }
+
+/* a faint accent hairline under the sticky header */
+.site-head::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 55%, transparent), color-mix(in srgb, var(--primary) 55%, transparent), transparent);
+  opacity: .5;
+}
+[data-glow="off"] .site-head::after { opacity: 0; }
+
+/* ---------- button glows ---------- */
+.btn-primary { transition: background .15s, box-shadow .25s var(--ease), transform .15s; }
+.btn-primary:hover { box-shadow: 0 8px 24px color-mix(in srgb, var(--primary) 36%, transparent); }
+.btn-accent { box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 30%, transparent); transition: background .15s, box-shadow .25s var(--ease), transform .15s; }
+.btn-accent:hover { box-shadow: 0 10px 30px color-mix(in srgb, var(--accent) 48%, transparent); transform: translateY(-1px); }
+[data-glow="off"] .btn-primary:hover, [data-glow="off"] .btn-accent, [data-glow="off"] .btn-accent:hover { box-shadow: var(--shadow-sm); }
+
+/* ---------- product card accent glow on hover ---------- */
+.pcard { transition: transform .22s var(--ease), box-shadow .28s var(--ease), border-color .2s; }
+.pcard:hover { box-shadow: 0 16px 38px color-mix(in srgb, var(--primary) 18%, transparent), var(--shadow-sm); }
+[data-theme="dark"] .pcard:hover { box-shadow: 0 18px 44px color-mix(in srgb, var(--primary) 30%, transparent); border-color: color-mix(in srgb, var(--primary) 35%, var(--border-2)); }
+.pcard .pc-add { box-shadow: 0 8px 20px color-mix(in srgb, var(--primary) 45%, transparent); }
+[data-glow="off"] .pcard:hover { box-shadow: var(--shadow-md); }
+
+/* quick-view / wishlist icon buttons get a soft lift */
+.icon-btn { transition: background .15s, color .15s, box-shadow .2s, transform .15s; }
+.icon-btn:hover { box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+
+/* ---------- elevated cards: hero, earnings, tiers ---------- */
+.hero { box-shadow: 0 1px 0 var(--border); }
+.hero-art > img { box-shadow: var(--shadow-md), 0 24px 60px color-mix(in srgb, var(--primary) 14%, transparent); }
+[data-theme="dark"] .hero-art > img { box-shadow: 0 24px 60px color-mix(in srgb, var(--primary) 32%, transparent); }
+[data-glow="off"] .hero-art > img { box-shadow: var(--shadow-md); }
+
+.aff-hero-card { box-shadow: var(--shadow-lg), 0 40px 90px color-mix(in srgb, var(--accent) 16%, transparent); }
+.ahc-bars span.on { box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 45%, transparent); }
+.aff-tier.featured { box-shadow: 0 0 0 1px var(--accent), 0 18px 46px color-mix(in srgb, var(--accent) 20%, transparent); }
+.success-check { box-shadow: 0 16px 40px color-mix(in srgb, var(--success) 40%, transparent); }
+[data-glow="off"] .aff-hero-card { box-shadow: var(--shadow-lg); }
+[data-glow="off"] .aff-tier.featured { box-shadow: 0 0 0 1px var(--accent), var(--shadow-md); }
+
+/* ---------- flash band glow ---------- */
+.flash-band { box-shadow: 0 24px 60px color-mix(in srgb, var(--accent) 30%, transparent); }
+.flash-ic { box-shadow: inset 0 0 0 1px rgba(255,255,255,.15), 0 6px 18px rgba(0,0,0,.18); }
+[data-glow="off"] .flash-band { box-shadow: var(--shadow-md); }
+
+/* ---------- category / stat tiles: glow accent on hover ---------- */
+.cat-tile, .stat-card, .help-cat { transition: transform .2s var(--ease), box-shadow .26s var(--ease), border-color .2s; }
+.cat-tile:hover, .stat-card:hover, .help-cat:hover { box-shadow: 0 14px 34px color-mix(in srgb, var(--primary) 16%, transparent); border-color: color-mix(in srgb, var(--primary) 30%, var(--border-2)); }
+.cat-tile:hover .cat-tile-ic { box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 38%, transparent); }
+[data-glow="off"] .cat-tile:hover, [data-glow="off"] .stat-card:hover, [data-glow="off"] .help-cat:hover { box-shadow: var(--shadow-md); }
+
+/* ---------- icon medallions: inner sheen ---------- */
+.why-ic, .perk-ic, .aff-step-ic, .aff-perk-ic, .contact-ic, .track-ic, .help-cat-ic, .stat-ic, .aff-stat-ic {
+  position: relative;
+}
+.aff-step-ic { box-shadow: 0 10px 26px color-mix(in srgb, var(--primary) 32%, transparent); }
+[data-glow="off"] .aff-step-ic { box-shadow: var(--shadow-sm); }
+
+/* ---------- inputs & search: focus glow ---------- */
+.input:focus { box-shadow: 0 0 0 4px var(--ring); }
+.sort-wrap:focus-within { box-shadow: 0 0 0 4px var(--ring); }
+
+/* ---------- sale / hot badges: soft glow ---------- */
+.badge-sale, .badge-hot { box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 40%, transparent); }
+[data-glow="off"] .badge-sale, [data-glow="off"] .badge-hot { box-shadow: none; }
+
+/* ---------- timeline current dot already pulses; add glow ring ---------- */
+.tl-step.current .tl-dot { box-shadow: 0 0 0 5px var(--primary-soft), 0 8px 22px color-mix(in srgb, var(--primary) 40%, transparent); }
+
+/* ---------- mini-cart / mobile nav floating cart subtle glow ---------- */
+.cart-fab, .floating-cart { box-shadow: 0 12px 30px color-mix(in srgb, var(--primary) 40%, transparent); }

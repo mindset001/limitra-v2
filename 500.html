@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Something Went Wrong, Limitra</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<style>
+  body { min-height: 100vh; display: grid; place-items: center; background: var(--bg); padding: 24px; }
+  .err-wrap { max-width: 480px; text-align: center; }
+  .err-logo { height: 30px; margin: 0 auto 36px; display: block; }
+  .err-ic { width: 76px; height: 76px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; margin: 0 auto 8px; }
+  .err-code { font-family: var(--font-display); font-weight: 700; font-size: clamp(80px, 18vw, 132px); line-height: .9; letter-spacing: -.04em; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .err-wrap h1 { font-size: 26px; margin: 6px 0 10px; }
+  .err-wrap p { color: var(--text-muted); font-size: 15px; line-height: 1.6; margin-bottom: 28px; text-wrap: pretty; }
+  .err-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .err-note { margin-top: 30px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-faint); }
+  .err-note a { color: var(--primary); cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="err-wrap">
+  <img class="err-logo" src="assets/logo.png" alt="Limitra" />
+  <div class="err-code">500</div>
+  <h1>Something went wrong</h1>
+  <p>We hit an unexpected error on our end. It’s not you, it’s us. Our team has been notified. Please try again in a moment.</p>
+  <div class="err-actions">
+    <a class="btn btn-primary btn-lg" href="javascript:location.reload()">Try again</a>
+    <a class="btn btn-outline btn-lg" href="index.html">Back to store</a>
+  </div>
+  <div class="err-note">Still stuck? <a href="index.html#/help/contact">Contact our support team</a> and we’ll help right away.</div>
+</div>
+</body>
+</html>

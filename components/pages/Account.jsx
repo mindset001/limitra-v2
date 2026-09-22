@@ -6,7 +6,22 @@ import { useStore } from '@/components/store/StoreProvider';
 import { SocialMark } from '@/components/ui/SocialMark';
 import { Breadcrumbs, EmptyState, ProductCard } from '@/components/ui/Shared';
 import { Modal, AddressForm, CardForm, CardBrandMark, Field } from '@/components/forms/Shared';
-import { naira, USER, ORDERS, SOCIAL_GLYPHS, byId } from '@/lib/data';
+import { naira, SOCIAL_GLYPHS, byId } from '@/lib/data';
+import { profileApi } from '@/lib/api/endpoints';
+import { messageFrom } from '@/lib/api/errors';
+
+// No order-list/get endpoint exists on the backend yet — always empty until it ships.
+const ORDERS = [];
+
+function displayName(user) {
+  if (!user) return '';
+  return [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || user.email || '';
+}
+function initialsFor(user) {
+  const name = displayName(user);
+  if (!name) return '?';
+  return name.split(' ').filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+}
 
 const ACCT_TABS = [
   ['dashboard', 'Dashboard', 'grid'],
@@ -23,17 +38,31 @@ const ACCT_TABS = [
 const STATUS_TINT = { 'In transit': 'info', 'Delivered': 'ok', 'Cancelled': 'bad', 'Processing': 'warn' };
 
 function AccountShell({ active, children }) {
-  const { go } = useStore();
+  const { go, user, isAuthenticated, authLoading, logout } = useStore();
   const [navOpen, setNavOpen] = useState(false);
   const activeTab = ACCT_TABS.find(t => t[0] === active);
+
+  if (authLoading) return null;
+
+  if (!isAuthenticated) {
+    return (
+      <div className="page page-fade"><div className="wrap">
+        <Breadcrumbs items={[{ label: 'Home', to: ['home'] }, { label: 'My account' }]} />
+        <EmptyState icon="user" title="Sign in to view your account" body="Your orders, addresses, wishlist and settings live here once you're signed in." action="Sign in" onAction={() => go('auth', 'signin')} />
+      </div></div>
+    );
+  }
+
+  const signOut = async () => { await logout(); go('auth', 'signin'); };
+
   return (
     <div className="page page-fade"><div className="wrap">
       <Breadcrumbs items={[{ label: 'Home', to: ['home'] }, { label: 'My account' }]} />
       <div className="acct-layout">
         <aside className={'acct-side' + (navOpen ? ' nav-open' : '')}>
           <div className="acct-user">
-            <span className="acct-avatar">{USER.initials}</span>
-            <div><b>{USER.name}</b><small className="muted">@{USER.username}</small></div>
+            <span className="acct-avatar">{initialsFor(user)}</span>
+            <div><b>{displayName(user)}</b><small className="muted">@{user.username || user.email}</small></div>
           </div>
           <button type="button" className="acct-nav-toggle" onClick={() => setNavOpen(o => !o)} aria-expanded={navOpen}>
             <span><Icon name={activeTab ? activeTab[2] : 'grid'} size={18} /> {activeTab ? activeTab[1] : 'Menu'}</span>
@@ -45,7 +74,7 @@ function AccountShell({ active, children }) {
                 <Icon name={ic} size={18} /> {label}
               </button>
             ))}
-            <button className="acct-link signout" onClick={() => go('auth', 'signin')}><Icon name="lock" size={18} /> Sign out</button>
+            <button className="acct-link signout" onClick={signOut}><Icon name="lock" size={18} /> Sign out</button>
           </nav>
         </aside>
         <div className="acct-main">{children}</div>
@@ -59,17 +88,19 @@ function StatusPill({ status }) {
 }
 
 function Dashboard() {
-  const { go, wish, referral } = useStore();
+  const { go, wish, referral, user } = useStore();
   const stats = [
     ['package', 'Total orders', ORDERS.length, 'orders'],
     ['truck', 'In transit', ORDERS.filter(o => o.status === 'In transit').length, 'orders'],
     ['heart', 'Wishlist', wish.length, 'wishlist'],
     ['limcash', 'Lim Cash', naira(referral.credit), 'referrals'],
   ];
+  const firstName = (displayName(user).split(' ')[0]) || 'there';
+  const recent = ORDERS.slice(0, 3);
   return (
     <>
       <div className="acct-welcome">
-        <div><h1 style={{ fontSize: 26 }}>Welcome back, {USER.name.split(' ')[0]} 👋</h1><p className="muted">Here’s what’s happening with your account.</p></div>
+        <div><h1 style={{ fontSize: 26 }}>Welcome back, {firstName} 👋</h1><p className="muted">Here’s what’s happening with your account.</p></div>
       </div>
       <div className="stat-grid">
         {stats.map(([ic, label, val, route]) => (
@@ -83,7 +114,9 @@ function Dashboard() {
 
       <div className="acct-panel">
         <div className="row between" style={{ marginBottom: 16 }}><h3>Recent orders</h3><button className="link-btn" onClick={() => go('orders')}>View all</button></div>
-        <OrderList orders={ORDERS.slice(0, 3)} />
+        {recent.length === 0
+          ? <p className="muted" style={{ fontSize: 14 }}>No recent orders — order history isn't available yet.</p>
+          : <OrderList orders={recent} />}
       </div>
     </>
   );
@@ -124,7 +157,7 @@ function Orders() {
         {tabs.map(([v, l]) => <button key={v} className={'pill-tab' + (filter === v ? ' on' : '')} onClick={() => setFilter(v)}>{l}</button>)}
       </div>
       {list.length === 0
-        ? <EmptyState icon="package" title="No orders here" body="You don’t have any orders with this status yet." />
+        ? <EmptyState icon="package" title="No orders here" body="Order history isn't available yet — check back once it's connected." />
         : <div className="acct-panel"><OrderList orders={list} /></div>}
     </>
   );
@@ -164,7 +197,7 @@ function Addresses() {
 }
 
 function Payments() {
-  const { cards, saveCard, removeCard, setPrimaryCard } = useStore();
+  const { cards, saveCard, removeCard, setPrimaryCard, user } = useStore();
   const [editing, setEditing] = useState(null);
   const close = () => setEditing(null);
   return (
@@ -175,7 +208,7 @@ function Payments() {
           <div key={c.id} className={'pay-card' + (c.brand === 'Visa' ? ' visa' : c.brand === 'Mastercard' ? ' mc' : ' other')}>
             <div className="row between"><CardBrandMark brand={c.brand} />{c.primary && <span className="pay-default">Default</span>}</div>
             <div className="pay-num">•••• •••• •••• {c.last}</div>
-            <div className="row between pay-foot"><span>{c.name || USER.name}</span><span>{c.exp}</span></div>
+            <div className="row between pay-foot"><span>{c.name || displayName(user)}</span><span>{c.exp}</span></div>
             <div className="pay-actions">
               <button className="pay-act" onClick={() => setEditing(c)} title="Edit card"><Icon name="edit" size={15} /></button>
               {!c.primary && <button className="pay-act" onClick={() => setPrimaryCard(c.id)} title="Set as default"><Icon name="check" size={15} stroke={3} /></button>}
@@ -196,16 +229,30 @@ function Payments() {
 }
 
 function Profile() {
-  const { toast, go } = useStore();
-  const [f, setF] = useState({ name: USER.name, username: USER.username, email: USER.email, phone: USER.phone });
+  const { toast, go, user, refreshUser } = useStore();
+  const [f, setF] = useState({ name: displayName(user), username: user?.username || '', email: user?.email || '', phone: user?.phone || '' });
+  const [saving, setSaving] = useState(false);
   const [channels, setChannels] = useState({
     app: { connected: true, value: 'iPhone · this device' },
-    email: { connected: true, value: USER.email },
-    WhatsApp: { connected: true, value: USER.phone },
+    email: { connected: true, value: user?.email || '' },
+    WhatsApp: { connected: !!user?.phone, value: user?.phone || '' },
     Facebook: { connected: false, value: '' },
     Instagram: { connected: false, value: '' },
     X: { connected: false, value: '' },
   });
+  const saveProfile = async () => {
+    setSaving(true);
+    const [first_name, ...rest] = f.name.trim().split(/\s+/);
+    try {
+      await profileApi.update({ first_name: first_name || undefined, last_name: rest.join(' ') || undefined, phone: f.phone || undefined });
+      await refreshUser();
+      toast('Profile saved');
+    } catch (e) {
+      toast(messageFrom(e), 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
   const CH_META = {
     app:       { name: 'Mobile App', glyph: false, icon: 'phone', cls: 'app', ph: '', note: 'Shop, track & get notifications' },
     email:     { name: 'Email', glyph: false, icon: 'mail', cls: 'email', ph: 'you@email.com', note: 'Support & notifications' },
@@ -220,7 +267,7 @@ function Profile() {
       <h1 style={{ fontSize: 26, marginBottom: 18 }}>Profile settings</h1>
       <div className="acct-panel" style={{ maxWidth: 560 }}>
         <div className="row" style={{ gap: 16, marginBottom: 24 }}>
-          <span className="acct-avatar" style={{ width: 64, height: 64, fontSize: 24 }}>{USER.initials}</span>
+          <span className="acct-avatar" style={{ width: 64, height: 64, fontSize: 24 }}>{initialsFor(user)}</span>
           <div><b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>{f.name}</b><div className="muted" style={{ fontSize: 13 }}>@{f.username}</div><button className="btn btn-ghost btn-sm" style={{ marginTop: 8 }}>Change photo</button></div>
         </div>
         <div className="form-grid">
@@ -236,7 +283,7 @@ function Profile() {
           <Field label="Email address" full value={f.email} onChange={v => setF(s => ({ ...s, email: v }))} />
           <Field label="Phone number" full value={f.phone} onChange={v => setF(s => ({ ...s, phone: v }))} />
         </div>
-        <button className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => toast('Profile saved')}>Save changes</button>
+        <button className="btn btn-primary" style={{ marginTop: 20 }} disabled={saving} onClick={saveProfile}>{saving ? 'Saving…' : 'Save changes'}</button>
       </div>
       <div className="acct-panel" style={{ maxWidth: 560, marginTop: 20 }}>
         <div className="row between" style={{ marginBottom: 4, alignItems: 'flex-start' }}>

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Icon } from '@/components/icons/Icon';
 import { Thumb, REAL_IMG } from '@/components/ui/Shared';
 import { useStore } from '@/components/store/StoreProvider';
-import { PRODUCTS, CATEGORIES, naira, USER, byId } from '@/lib/data';
+import { PRODUCTS, CATEGORIES, naira, byId } from '@/lib/data';
 
 const ELO_MAX_IMAGES = 5;
 const ELO_MAX_BYTES = 10 * 1024 * 1024; // 10MB
@@ -143,7 +143,7 @@ Elo:`;
             {msgs.map((m, i) => (
               <div key={i} className={'lucy-msg ' + m.role}>
                 {m.role === 'assistant' && <span className="lucy-msg-av"><span className="lucy-av-text sm">Elo</span></span>}
-                {m.role === 'user' && <span className="lucy-msg-av user"><span className="lucy-av-text sm">{USER.initials}</span></span>}
+                {m.role === 'user' && <span className="lucy-msg-av user"><Icon name="user" size={14} /></span>}
                 <div className="lucy-bubble">
                   {m.images && m.images.length > 0 && (
                     <div className={'lucy-msg-imgs n' + Math.min(m.images.length, 3)}>

@@ -5,7 +5,9 @@ import { Icon } from '@/components/icons/Icon';
 import { useStore } from '@/components/store/StoreProvider';
 import { Modal, AddressForm, CardForm, CardBrandMark, Field } from '@/components/forms/Shared';
 import { Thumb, REAL_IMG, QtyStepper, Breadcrumbs, EmptyState } from '@/components/ui/Shared';
-import { naira, byId, USER } from '@/lib/data';
+import { naira, byId } from '@/lib/data';
+import { ordersApi } from '@/lib/api/endpoints';
+import { messageFrom } from '@/lib/api/errors';
 
 const SHIP_FEE = 3500;
 const FREE_SHIP = 150000;
@@ -168,9 +170,11 @@ function Stepper({ step }) {
 }
 
 export function CheckoutPage() {
-  const { cart, cartTotal, clearCart, go, toast, addresses, cards, saveAddress, saveCard, referral, redeemCredit, promo } = useStore();
+  const { cart, cartTotal, clearCart, go, toast, addresses, cards, saveAddress, saveCard, referral, redeemCredit, promo, user, isAuthenticated } = useStore();
   const [step, setStep] = useState(0);
   const [orderId, setOrderId] = useState(null);
+  const [placing, setPlacing] = useState(false);
+  const [idemKey] = useState(() => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()));
   const [useCredit, setUseCreditState] = useState(false);
   useEffect(() => { try { setUseCreditState(localStorage.getItem('lim_use_credit') === '1'); } catch (e) {} }, []);
   const setUseCredit = (v) => { setUseCreditState(v); localStorage.setItem('lim_use_credit', v ? '1' : '0'); };
@@ -178,7 +182,8 @@ export function CheckoutPage() {
   const primaryCard = cards.find(c => c.primary) || cards[0];
   const [selAddr, setSelAddr] = useState(primaryAddr ? primaryAddr.id : null);
   const [selCard, setSelCard] = useState(primaryCard ? primaryCard.id : null);
-  const [email, setEmail] = useState(USER.email);
+  const [email, setEmail] = useState(user?.email || '');
+  useEffect(() => { if (user?.email) setEmail(e => e || user.email); }, [user]);
   const [method, setMethod] = useState('standard');
   const [payMethod, setPayMethod] = useState('card');
   const [addrModal, setAddrModal] = useState(false);
@@ -192,6 +197,14 @@ export function CheckoutPage() {
   const activeCard = cards.find(c => c.id === selCard);
 
   useEffect(() => { window.scrollTo({ top: 0 }); }, [step]);
+
+  if (!isAuthenticated && !orderId) {
+    return (
+      <div className="page page-fade"><div className="wrap">
+        <EmptyState icon="user" title="Sign in to check out" body="Orders are tied to your account — sign in to continue." action="Sign in" onAction={() => go('auth', 'signin')} />
+      </div></div>
+    );
+  }
 
   if (cart.length === 0 && !orderId) {
     return (
@@ -222,13 +235,21 @@ export function CheckoutPage() {
     if (step === 1 && !validatePay()) return;
     setStep(s => s + 1);
   };
-  const placeOrder = (skipXfer) => {
+  const placeOrder = async (skipXfer) => {
     if (payMethod === 'transfer' && !xferDone && !skipXfer) { setXferModal(true); return; }
-    const id = 'LMT-' + Math.floor(90000 + Math.random() * 9999);
-    if (useCredit) { const applied = redeemCredit(Math.min(referral.credit, cartTotal + shipFee)); if (applied > 0) toast(`${naira(applied)} credit applied`); }
-    setOrderId(id);
-    clearCart();
-    toast('Order placed successfully!');
+    if (placing) return;
+    setPlacing(true);
+    try {
+      const order = await ordersApi.create(idemKey);
+      if (useCredit) { const applied = redeemCredit(Math.min(referral.credit, cartTotal + shipFee)); if (applied > 0) toast(`${naira(applied)} credit applied`); }
+      setOrderId(order?.id || order?.order_number || idemKey);
+      await clearCart();
+      toast('Order placed successfully!');
+    } catch (err) {
+      toast(messageFrom(err), 'error');
+    } finally {
+      setPlacing(false);
+    }
   };
 
   if (orderId) return <OrderSuccess orderId={orderId} email={email} method={method} />;
@@ -356,7 +377,7 @@ export function CheckoutPage() {
               <div className="review-block">
                 <div className="rb-head"><span><Icon name="bag" size={16} /> {cart.reduce((s, i) => s + i.qty, 0)} items</span><button className="link-btn" onClick={() => go('cart')}>Edit cart</button></div>
                 <div className="review-items">
-                  {cart.map(it => { const p = byId(it.id); return (
+                  {cart.map(it => { const p = byId(it.id); if (!p) return null; return (
                     <div className="rev-item" key={it.key}>
                       <div className="rev-item-thumb"><Thumb product={p} src={REAL_IMG[p.id]} /></div>
                       <span className="rev-item-name">{p.name}<small className="muted"> × {it.qty}</small></span>
@@ -388,7 +409,7 @@ export function CheckoutPage() {
             <button className="btn btn-ghost" onClick={() => step === 0 ? go('cart') : setStep(s => s - 1)}><Icon name="chevleft" size={16} /> {step === 0 ? 'Back to cart' : 'Back'}</button>
             {step < 2
               ? <button className="btn btn-primary btn-lg" onClick={next}>Continue <Icon name="arrowr" size={17} /></button>
-              : <button className="btn btn-accent btn-lg" onClick={() => placeOrder()}><Icon name="lock" size={17} /> Place order</button>}
+              : <button className="btn btn-accent btn-lg" disabled={placing} onClick={() => placeOrder()}><Icon name="lock" size={17} /> {placing ? 'Placing order…' : 'Place order'}</button>}
           </div>
         </div>
 
@@ -413,7 +434,8 @@ export function CheckoutPage() {
         const beforeCredit = Math.max(0, cartTotal - disc) + shipFee;
         const creditUse = useCredit ? Math.min(referral.credit, beforeCredit) : 0;
         const due = Math.max(0, beforeCredit - creditUse);
-        const ref = 'LMT-' + String(Math.abs(cartTotal)).slice(-4) + '-' + USER.name.split(' ')[0].toUpperCase();
+        const namePart = (user?.username || user?.email || 'GUEST').split(/[@\s]/)[0].toUpperCase();
+        const ref = 'LMT-' + String(Math.abs(cartTotal)).slice(-4) + '-' + namePart;
         const copy = (txt, key) => { navigator.clipboard?.writeText(txt); setXferCopied(key); toast('Copied'); setTimeout(() => setXferCopied(''), 1600); };
         return (
           <Modal title="Complete your bank transfer" sub="Transfer the exact amount to the account below." width={440} onClose={() => setXferModal(false)}>

@@ -3,7 +3,7 @@
    Field (originally in legacy/pages-cart.jsx, reused by pages-account.jsx) lives here too. */
 import { useState, useEffect, useRef } from 'react';
 import { Icon } from '@/components/icons/Icon';
-import { USER, cardBrand as dataCardBrand } from '@/lib/data';
+import { cardBrand as dataCardBrand } from '@/lib/data';
 
 export const NG_STATES = ['Lagos', 'Abuja (FCT)', 'Rivers', 'Oyo', 'Kano', 'Enugu', 'Kaduna', 'Delta'];
 
@@ -23,6 +23,18 @@ export function Modal({ title, sub, onClose, children, width = 520 }) {
         </div>
         <div className="modal-body">{children}</div>
       </div>
+    </div>
+  );
+}
+
+/* form-level failure banner (e.g. "Invalid credentials") — distinct from a
+   field's own err-msg, which stays inline under that field. */
+export function FormAlert({ children }) {
+  if (!children) return null;
+  return (
+    <div className="form-alert" role="alert">
+      <Icon name="close" size={14} />
+      <span>{children}</span>
     </div>
   );
 }
@@ -73,7 +85,7 @@ function CheckRow({ checked, onChange, children }) {
 }
 
 export function AddressForm({ initial, onSave, onCancel }) {
-  const [f, setF] = useState(() => initial || { label: 'Home', name: USER.name, line: '', city: '', state: 'Lagos', phone: '', primary: false });
+  const [f, setF] = useState(() => initial || { label: 'Home', name: '', line: '', city: '', state: 'Lagos', phone: '', primary: false });
   const [errs, setErrs] = useState({});
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
   const submit = e => {
@@ -108,7 +120,7 @@ export function AddressForm({ initial, onSave, onCancel }) {
 
 export function CardForm({ initial, onSave, onCancel }) {
   const editing = !!(initial && initial.id);
-  const [f, setF] = useState(() => initial || { name: USER.name, number: '', exp: '', cvv: '', primary: false });
+  const [f, setF] = useState(() => initial || { name: '', number: '', exp: '', cvv: '', primary: false });
   const [errs, setErrs] = useState({});
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
   const fmtCard = v => v.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim();

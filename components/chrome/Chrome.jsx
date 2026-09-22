@@ -265,13 +265,13 @@ function MiniCart({ open, onClose }) {
               const p = byId(it.id);
               return (
                 <div className="mini-item" key={it.key}>
-                    <div className="mini-thumb"><Thumb product={p} src={REAL_IMG[p.id]} /></div>
+                    <div className="mini-thumb"><Thumb product={p} src={p ? REAL_IMG[p.id] : null} /></div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="mini-name">{p.name}</div>
+                      <div className="mini-name">{p ? p.name : 'Item unavailable'}</div>
                       <div className="muted" style={{ fontSize: 12, fontFamily: 'var(--font-display)' }}>{[it.color, it.storage].filter(Boolean).join(' · ')}</div>
                       <div className="row between" style={{ marginTop: 8 }}>
                         <QtyStepper size="sm" value={it.qty} onChange={(q) => setQty(it.key, q)} />
-                        <strong style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>{naira(p.price * it.qty)}</strong>
+                        <strong style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>{p ? naira(p.price * it.qty) : '—'}</strong>
                       </div>
                     </div>
                   </div>);

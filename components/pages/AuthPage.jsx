@@ -4,7 +4,10 @@ import { useState, useRef, useEffect } from 'react';
 import { Icon, Logo } from '@/components/icons/Icon';
 import { useStore } from '@/components/store/StoreProvider';
 import { SocialMark } from '@/components/ui/SocialMark';
-import { roleFor } from '@/lib/data';
+import { FormAlert } from '@/components/forms/Shared';
+import { authApi } from '@/lib/api/endpoints';
+import { ApiError } from '@/lib/api/client';
+import { fieldErrorsFrom, messageFrom } from '@/lib/api/errors';
 
 function AuthField({ label, type = 'text', value, onChange, err, placeholder, icon, leading, prefix, right, onRight }) {
   return (
@@ -30,12 +33,16 @@ const ID_METHODS = {
 };
 const SOCIAL_KEYS = ['WhatsApp', 'Facebook', 'Instagram', 'X'];
 
-function OtpInput({ onComplete }) {
+function OtpInput({ onChange }) {
   const [vals, setVals] = useState(['', '', '', '', '', '']);
   const refs = useRef([]);
   const set = (i, v) => {
     v = v.replace(/\D/g, '').slice(-1);
-    setVals((prev) => {const n = [...prev];n[i] = v;if (v && i < 5) refs.current[i + 1]?.focus();if (n.every((x) => x)) onComplete?.(n.join(''));return n;});
+    const n = [...vals];
+    n[i] = v;
+    setVals(n);
+    if (v && i < 5) refs.current[i + 1]?.focus();
+    onChange?.(n.join(''));
   };
   const key = (i, e) => {if (e.key === 'Backspace' && !vals[i] && i > 0) refs.current[i - 1]?.focus();};
   return (
@@ -48,17 +55,20 @@ function OtpInput({ onComplete }) {
 }
 
 export function AuthPage({ mode = 'signin' }) {
-  const { go, toast } = useStore();
+  const { go, toast, refreshUser } = useStore();
   const [m, setM] = useState(mode);
-  const otpFrom = useRef('signup');
+  const [otpFrom, setOtpFrom] = useState('signup');
   const [idm, setIdm] = useState('email'); // identifier method
   const [f, setF] = useState({ name: '', id: '', pass: '', confirm: '' });
   const [errs, setErrs] = useState({});
+  const [formError, setFormError] = useState('');
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resend, setResend] = useState(28);
+  const [otp, setOtp] = useState('');
+  const [pendingEmail, setPendingEmail] = useState('');
 
-  useEffect(() => {setM(mode);setErrs({});setIdm('email');}, [mode]);
+  useEffect(() => {setM(mode);setErrs({});setFormError('');setIdm('email');}, [mode]);
   useEffect(() => {if (m === 'signup' || m === 'forgot') setIdm('email');}, [m]);
   useEffect(() => {
     if (m !== 'otp') return;
@@ -69,13 +79,23 @@ export function AuthPage({ mode = 'signin' }) {
 
   const isSocial = idm !== 'email';
   const meta = ID_METHODS[idm];
-  const switchMethod = (k) => {setIdm((cur) => cur === k ? 'email' : k);setF((s) => ({ ...s, id: '', pass: '', confirm: '' }));setErrs({});};
+  const switchMethod = (k) => {setIdm((cur) => cur === k ? 'email' : k);setF((s) => ({ ...s, id: '', pass: '', confirm: '' }));setErrs({});setFormError('');};
+
+  // Maps ApiError field errors onto our local field names; falls back to the
+  // top-level message when the API returns a 422 with no usable field errors
+  // (e.g. verify-email's "Invalid or expired code" comes back as errors: null).
+  const applyErrors = (err, fieldMap) => {
+    const fe = err instanceof ApiError && err.status === 422 ? fieldErrorsFrom(err) : {};
+    const mapped = Object.fromEntries(Object.entries(fieldMap).map(([local, apiField]) => [local, fe[apiField]]));
+    if (Object.values(mapped).some(Boolean)) setErrs(mapped);
+    else setFormError(messageFrom(err));
+  };
 
   const otpDest = idm === 'email' ? f.id || 'your email' :
   idm === 'WhatsApp' ? f.id || 'your WhatsApp' :
   '@' + (f.id.replace(/^@/, '') || 'your handle') + ' on ' + idm;
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     const er = {};
     if (m === 'signup' && !f.name.trim()) er.name = 'Enter your name';
@@ -88,36 +108,121 @@ export function AuthPage({ mode = 'signin' }) {
     // password only applies to the email method
     if (!isSocial && (m === 'signin' || m === 'signup') && f.pass.length < 6) er.pass = 'At least 6 characters';
     if (!isSocial && m === 'signup' && f.confirm !== f.pass) er.confirm = 'Passwords don’t match';
+    if (m === 'otp') {
+      if (otp.length < 6) er.otp = 'Enter the 6-digit code';
+      // the forgot-password OTP screen doubles as the new-password step
+      if (otpFrom === 'forgot') {
+        if (f.pass.length < 6) er.pass = 'At least 6 characters';
+        if (f.confirm !== f.pass) er.confirm = 'Passwords don’t match';
+      }
+    }
     setErrs(er);
+    setFormError('');
     if (Object.keys(er).length) return;
 
     setLoading(true);
+
+    if (m === 'signin' && !isSocial) {
+      try {
+        await authApi.login({ email: f.id.trim(), password: f.pass });
+        await refreshUser();
+        setLoading(false);
+        toast('Welcome back!');
+        go('account');
+      } catch (err) {
+        setLoading(false);
+        applyErrors(err, { id: 'email', pass: 'password' });
+      }
+      return;
+    }
+
+    if (m === 'signup' && !isSocial) {
+      try {
+        await authApi.signup({
+          name: f.name.trim(),
+          email: f.id.trim(),
+          password: f.pass,
+          password_confirmation: f.confirm,
+        });
+        setLoading(false);
+        setPendingEmail(f.id.trim());
+        setOtp('');
+        setOtpFrom('signup');
+        setM('otp');
+      } catch (err) {
+        setLoading(false);
+        applyErrors(err, { name: 'name', id: 'email', pass: 'password', confirm: 'password_confirmation' });
+      }
+      return;
+    }
+
+    if (m === 'forgot') {
+      try {
+        await authApi.forgotPassword({ email: f.id.trim() });
+        setLoading(false);
+        setPendingEmail(f.id.trim());
+        setOtp('');
+        setOtpFrom('forgot');
+        toast('Code sent to your email');
+        setM('otp');
+      } catch (err) {
+        setLoading(false);
+        setFormError(messageFrom(err));
+      }
+      return;
+    }
+
+    if (m === 'otp' && (otpFrom === 'signup' || otpFrom === 'forgot')) {
+      try {
+        if (otpFrom === 'forgot') {
+          await authApi.resetPassword({ email: pendingEmail, otp, password: f.pass });
+          setLoading(false);
+          toast('Password reset — sign in with your new password');
+          setF((s) => ({ ...s, pass: '', confirm: '' }));
+          setM('signin');
+        } else {
+          await authApi.verifyEmail({ email: pendingEmail, otp });
+          await refreshUser();
+          setLoading(false);
+          toast('Verified!');
+          try { window.dispatchEvent(new Event('lim:signup')); } catch (e) {}
+          go('account');
+        }
+      } catch (err) {
+        setLoading(false);
+        applyErrors(err, { otp: 'otp', pass: 'password' });
+      }
+      return;
+    }
+
+    // social sign-in / sign-up and their OTP step have no backend yet — stays simulated
     setTimeout(() => {
       setLoading(false);
-      if (m === 'forgot') {toast('Reset link sent');otpFrom.current = 'forgot';setM('otp');return;}
-      // social sign-in / sign-up always confirms with a one-time code
-      if (isSocial) {toast(`Code sent via ${idm}`);otpFrom.current = m;setM('otp');return;}
-      if (m === 'signin') {
-        const email = (f.id || '').trim().toLowerCase();
-        const r = roleFor(email);
-        if (!isSocial && r.role === 'Super Admin') { try { localStorage.setItem('lim_admin', JSON.stringify({ ...r, email })); } catch (e) {} toast('Welcome, Super Admin'); setTimeout(() => { window.location.href = r.dest; }, 400); return; }
-        if (!isSocial && r.role === 'Affiliate') { try { localStorage.setItem('lim_affiliate', JSON.stringify({ ...r, email })); } catch (e) {} toast('Welcome back!'); setTimeout(() => { window.location.href = r.dest; }, 400); return; }
-        toast('Welcome back!'); go('account');
-      } else
-      if (m === 'signup') {otpFrom.current = 'signup';setM('otp');}
+      if (m === 'otp') {toast('Verified!');go('account');return;}
+      if (isSocial) {toast(`Code sent via ${idm}`);setOtpFrom('social');setM('otp');}
     }, 900);
+  };
+
+  const resendCode = async () => {
+    setResend(28);
+    if (otpFrom === 'forgot') {
+      try { await authApi.forgotPassword({ email: pendingEmail }); toast('Code resent'); }
+      catch (err) { toast(messageFrom(err), 'error'); }
+    } else {
+      toast('Code resent');
+    }
   };
 
   const titles = {
     signin: ['Welcome back', 'Sign in to continue to your Limitra account.'],
     signup: ['Create your account', 'Join Limitra for verified tech and exclusive deals.'],
-    forgot: ['Reset password', 'Enter your email and we’ll send you a reset link.'],
+    forgot: ['Reset password', 'Enter your email and we’ll send you a 6-digit code.'],
     otp: ['Verify it’s you', `We sent a 6-digit code to ${otpDest}.`]
   };
 
   const submitLabel = isSocial ?
   <>Continue with {idm} <Icon name="arrowr" size={17} /></> :
-  m === 'signin' ? 'Sign in' : m === 'signup' ? 'Create account' : 'Send reset link';
+  m === 'signin' ? 'Sign in' : m === 'signup' ? 'Create account' : 'Send code';
 
   return (
     <div className="auth-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) go('home'); }}>
@@ -167,14 +272,25 @@ export function AuthPage({ mode = 'signin' }) {
 
           {m === 'otp' ?
           <form onSubmit={submit}>
-              <OtpInput onComplete={() => {toast('Verified!');if (otpFrom.current === 'signup') {try {window.dispatchEvent(new Event('lim:signup'));} catch (e) {}}go('account');}} />
-              <button className="btn btn-primary btn-block btn-lg" type="submit" style={{ marginTop: 22 }}>Verify &amp; continue</button>
+              <FormAlert>{formError}</FormAlert>
+              <OtpInput onChange={setOtp} />
+              {errs.otp && <span className="err-msg">{errs.otp}</span>}
+              {otpFrom === 'forgot' &&
+              <div style={{ marginTop: 18, display: 'grid', gap: 14 }}>
+                  <AuthField label="New password" type={show ? 'text' : 'password'} icon="lock" value={f.pass} onChange={(v) => setF((s) => ({ ...s, pass: v }))} err={errs.pass} placeholder="••••••••" right={show ? 'Hide' : 'Show'} onRight={() => setShow((s) => !s)} />
+                  <AuthField label="Confirm new password" type={show ? 'text' : 'password'} icon="lock" value={f.confirm} onChange={(v) => setF((s) => ({ ...s, confirm: v }))} err={errs.confirm} placeholder="••••••••" />
+                </div>
+              }
+              <button className="btn btn-primary btn-block btn-lg" type="submit" disabled={loading} style={{ marginTop: 22 }}>
+                {loading ? <span className="auth-spin" /> : 'Verify & continue'}
+              </button>
               <p className="muted" style={{ textAlign: 'center', marginTop: 16, fontSize: 13.5 }}>
-                Didn’t get the code? {resend > 0 ? <span>Resend in {resend}s</span> : <a className="link-btn" onClick={() => {setResend(28);toast('Code resent');}}>Resend code</a>}
+                Didn’t get the code? {resend > 0 ? <span>Resend in {resend}s</span> : <a className="link-btn" onClick={resendCode}>Resend code</a>}
               </p>
             </form> :
 
           <form onSubmit={submit} className="auth-form">
+              <FormAlert>{formError}</FormAlert>
               {m === 'signup' && <AuthField label="Full name" icon="user" value={f.name} onChange={(v) => setF((s) => ({ ...s, name: v }))} err={errs.name} placeholder="Lucy Limitra" />}
 
               <AuthField

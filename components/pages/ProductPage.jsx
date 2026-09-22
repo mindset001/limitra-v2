@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '@/components/icons/Icon';
 import { useStore } from '@/components/store/StoreProvider';
-import { Thumb, REAL_IMG, Placeholder, Stars, QtyStepper, Breadcrumbs, SectionHead, ProductCard } from '@/components/ui/Shared';
+import { Thumb, REAL_IMG, Placeholder, Stars, QtyStepper, Breadcrumbs, SectionHead, ProductCard, EmptyState } from '@/components/ui/Shared';
 import { ShareButton } from '@/components/share/Share';
 import { VideoStage, VID_POSTER, VIDEOS } from '@/components/video/Video';
-import { PRODUCTS, PRODUCT_GALLERY, CATEGORIES, VARIANTS, REVIEWS, naira, byId, bySlug, byCat } from '@/lib/data';
+import { CATEGORIES, VARIANTS, naira, byId, bySlug, byCat } from '@/lib/data';
 
 function Gallery({ product, color }) {
   const [active, setActive] = useState(0);
@@ -16,9 +16,8 @@ function Gallery({ product, color }) {
   const [lightbox, setLightbox] = useState(false);
   const isMobile = () => window.matchMedia('(max-width: 767px)').matches;
   const real = REAL_IMG[product.id];
-  const galleryMap = (PRODUCT_GALLERY || {})[product.id];
-  const gImgs = galleryMap ? (galleryMap[color] || galleryMap[Object.keys(galleryMap)[0]]) : null;
-  const angles = gImgs ? gImgs.map((_, i) => ['front', 'design', 'side', 'detail'][i] || 'view') : ['front', 'back', 'side', 'detail'];
+  const gImgs = null;
+  const angles = ['front', 'back', 'side', 'detail'];
   const vid = (VIDEOS || []).find(v => (v.products || []).includes(product.id));
   const VIDEO_TAB = angles.length; // index for the video view
   useEffect(() => { if (active >= angles.length) setActive(0); }, [color]);
@@ -87,7 +86,6 @@ function Gallery({ product, color }) {
 }
 
 function ReviewBreakdown({ product }) {
-  const dist = [70, 20, 6, 2, 2];
   return (
     <div className="rev-summary">
       <div className="rev-score">
@@ -95,30 +93,30 @@ function ReviewBreakdown({ product }) {
         <Stars value={product.rating} size={18} />
         <small className="muted">{product.reviews.toLocaleString()} reviews</small>
       </div>
-      <div className="rev-bars">
-        {dist.map((pct, i) => (
-          <div key={i} className="rev-bar-row">
-            <span>{5 - i}<Icon name="star" size={11} fill="var(--gold)" /></span>
-            <div className="rev-track"><div className="rev-fill" style={{ width: pct + '%' }} /></div>
-            <small>{pct}%</small>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
 
 export function ProductPage({ id }) {
   const { go, addToCart, toggleWish, wish, cart } = useStore();
-  const product = bySlug(id) || byId(id) || PRODUCTS[0];
-  const [color, setColor] = useState(product.colors[0]?.name);
+  const product = bySlug(id) || byId(id);
+  const [color, setColor] = useState(product?.colors?.[0]?.name);
   const [storage, setStorage] = useState(VARIANTS.storage[1]);
   const [qty, setQty] = useState(1);
   const [tab, setTab] = useState('desc');
-  const hasStorage = ['phone', 'tablet', 'laptop'].includes(product.shot);
-  const related = byCat(product.category).filter(p => p.id !== product.id).slice(0, 5);
-  const faved = wish.includes(product.id);
-  useEffect(() => { setColor(product.colors[0]?.name); setQty(1); setTab('desc'); }, [id]);
+  const hasStorage = !!product && ['phone', 'tablet', 'laptop'].includes(product.shot);
+  const related = product ? byCat(product.category).filter(p => p.id !== product.id).slice(0, 5) : [];
+  const faved = !!product && wish.includes(product.id);
+  useEffect(() => { if (!product) return; setColor(product.colors[0]?.name); setQty(1); setTab('desc'); }, [id, product]);
+
+  if (!product) {
+    return (
+      <div className="page page-fade"><div className="wrap">
+        <Breadcrumbs items={[{ label: 'Home', to: ['home'] }, { label: 'Product' }]} />
+        <EmptyState icon="package" title="Product catalog isn't available yet" body="We're still connecting the product catalog to Limitra. Check back soon." action="Back to shop" onAction={() => go('shop', 'all')} />
+      </div></div>
+    );
+  }
 
   const buy = (checkout) => { addToCart(product, { color, storage: hasStorage ? storage : '' }, qty); if (checkout) go('checkout'); };
 
@@ -226,21 +224,7 @@ export function ProductPage({ id }) {
           {tab === 'reviews' && (
             <div className="reviews">
               <ReviewBreakdown product={product} />
-              <div className="rev-list">
-                {REVIEWS.map((r, i) => (
-                  <div key={i} className="rev-card">
-                    <div className="row between">
-                      <div className="row" style={{ gap: 11 }}>
-                        <span className="avatar" style={{ width: 38, height: 38, fontSize: 15 }}>{r.name[0]}</span>
-                        <div><b style={{ fontFamily: 'var(--font-display)', fontSize: 14 }}>{r.name}</b>{r.verified && <span className="badge badge-soft" style={{ marginLeft: 8, fontSize: 10 }}>Verified</span>}<br /><small className="muted">{r.date}</small></div>
-                      </div>
-                      <Stars value={r.rate} size={14} />
-                    </div>
-                    <b style={{ fontFamily: 'var(--font-display)', fontSize: 15, display: 'block', margin: '12px 0 4px' }}>{r.title}</b>
-                    <p className="muted" style={{ fontSize: 14, textWrap: 'pretty' }}>{r.body}</p>
-                  </div>
-                ))}
-              </div>
+              <EmptyState icon="star" title="No reviews yet" body="Reviews aren't connected yet — check back once they're live." />
             </div>
           )}
         </div>

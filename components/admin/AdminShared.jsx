@@ -6,8 +6,13 @@
    AdminInventory, the three pages that had `data-hlkey` rows). */
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/icons/Icon';
-import { PRODUCTS, ORDERS } from '@/lib/data';
+import { PRODUCTS } from '@/lib/data';
 import { useAdminToast } from './AdminToastContext';
+
+// admin dashboard is out of scope for the storefront data cleanup (no live
+// backend for order listing yet) — kept as an empty seed so this file's
+// existing demo logic still runs without a lib/data ORDERS mock.
+const ORDERS = [];
 
 /* ---------- derived demo metrics (verbatim from legacy/admin.jsx) ---------- */
 export const ADMIN_ORDERS = (() => {

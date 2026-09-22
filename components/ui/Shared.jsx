@@ -51,8 +51,9 @@ export const REAL_IMG = { /* a few products get real photos */
 
 export function ProductCard({ product, compact }) {
   const { go, addToCart, toggleWish, wish } = useStore();
-  const faved = wish.includes(product.id);
   const [quick, setQuick] = useState(false);
+  if (!product) return null;
+  const faved = wish.includes(product.id);
   const open = () => go('product', product.slug || product.id);
   return (
     <article className="pcard" onClick={open} style={{ cursor: 'pointer' }}>
@@ -97,13 +98,14 @@ function productBlurb(p) {
 
 function QuickView({ product, onClose }) {
   const { go, addToCart, toggleWish, wish } = useStore();
-  const faved = wish.includes(product.id);
   useEffect(() => {
     const k = e => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', k);
     document.body.style.overflow = 'hidden';
     return () => { window.removeEventListener('keydown', k); document.body.style.overflow = ''; };
   }, [onClose]);
+  if (!product) return null;
+  const faved = wish.includes(product.id);
   return createPortal(
     <div className="qv-overlay" onClick={e => { e.stopPropagation(); if (e.target === e.currentTarget) onClose(); }}>
       <div className="qv-modal" onClick={e => e.stopPropagation()}>
@@ -191,8 +193,8 @@ export function Toasts() {
     <div className="toast-wrap">
       {toasts.map(t => (
         <div className="toast" key={t.id}>
-          <span className="tdot" style={{ background: t.kind === 'ok' ? 'var(--success)' : 'var(--accent)' }}>
-            <Icon name={t.kind === 'ok' ? 'check' : 'info'} size={13} stroke={3} />
+          <span className="tdot" style={{ background: t.kind === 'ok' ? 'var(--success)' : t.kind === 'error' ? 'var(--red)' : 'var(--accent)' }}>
+            <Icon name={t.kind === 'ok' ? 'check' : t.kind === 'error' ? 'close' : 'info'} size={13} stroke={3} />
           </span>
           {t.msg}
         </div>

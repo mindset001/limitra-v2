@@ -4,11 +4,11 @@ import { Fragment, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '@/components/icons/Icon';
 import { useStore } from '@/components/store/StoreProvider';
-import { SectionHead, ProductCard, Thumb, REAL_IMG, Placeholder, useReveal, Stars } from '@/components/ui/Shared';
+import { SectionHead, ProductCard, Thumb, REAL_IMG, Placeholder, useReveal } from '@/components/ui/Shared';
 import { SocialMark } from '@/components/ui/SocialMark';
 import { CAT_ICON } from '@/components/chrome/Chrome';
 import { FeaturedVideo } from '@/components/video/Video';
-import { PRODUCTS, CATEGORIES, naira, REVIEWS } from '@/lib/data';
+import { PRODUCTS, CATEGORIES, naira } from '@/lib/data';
 
 export function Countdown({ hours = 8 }) {
   const [t, setT] = useState(hours * 3600 + 1423);
@@ -224,6 +224,7 @@ export function AffiliatePicks() {
   const [promote, setPromote] = useState(null);
   const picks = PRODUCTS.filter((p) => p.bestseller).slice(0, 4);
   const rate = (p) => p.price >= 500000 ? 12 : p.price >= 100000 ? 10 : 8;
+  if (picks.length === 0) return null;
   return (
     <section className="sec" style={{ paddingTop: 40 }}>
       <div className="wrap">
@@ -261,6 +262,7 @@ export function AffiliatePicks() {
 
 function CategoryStrip() {
   const { go } = useStore();
+  if (CATEGORIES.length === 0) return null;
   return (
     <section className="sec" style={{ paddingTop: 40 }}>
       <div className="wrap">
@@ -282,6 +284,7 @@ function CategoryStrip() {
 function FlashDeals() {
   const { go } = useStore();
   const deals = PRODUCTS.filter((p) => p.off > 0).slice(0, 6);
+  if (deals.length === 0) return null;
   return (
     <section className="sec">
       <div className="wrap">
@@ -437,6 +440,7 @@ function PromoBanners() {
 
 function ProductRow({ eyebrow, title, items, cat }) {
   const { go } = useStore();
+  if (items.length === 0) return null;
   return (
     <section className="sec">
       <div className="wrap">
@@ -470,29 +474,6 @@ function WhyLimitra() {
 
 }
 
-function Testimonials() {
-  const items = REVIEWS.slice(0, 3);
-  return (
-    <section className="sec">
-      <div className="wrap">
-        <SectionHead eyebrow="Loved by shoppers" title="What customers say" />
-        <div className="grid-3">
-          {items.map((r, i) =>
-          <div key={i} className="testi reveal">
-              <Stars value={r.rate} size={16} />
-              <p>“{r.body}”</p>
-              <div className="row" style={{ gap: 12 }}>
-                <span className="avatar">{r.name[0]}</span>
-                <div><b>{r.name}</b><small className="muted">{r.verified ? 'Verified buyer' : 'Customer'}</small></div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </section>);
-
-}
-
 export function HomePage() {
   useReveal();
   const trending = PRODUCTS.filter((p) => p.bestseller).slice(0, 5);
@@ -508,7 +489,6 @@ export function HomePage() {
       <ProductRow eyebrow="Just landed" title="New arrivals" items={arrivals} cat="new" />
       <FeaturedVideo />
       <WhyLimitra />
-      <Testimonials />
     </div>);
 
 }

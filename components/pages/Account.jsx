@@ -459,6 +459,13 @@ const TRACK_STEPS = [
 export function TrackingPage({ id }) {
   const { go } = useStore();
   const order = ORDERS.find(o => o.id === id) || ORDERS[0];
+  if (!order) {
+    return (
+      <AccountShell active="tracking">
+        <EmptyState icon="truck" title="No order to track yet" body="Order history isn't available yet, so there's nothing here to track." action="View orders" onAction={() => go('orders')} />
+      </AccountShell>
+    );
+  }
   const current = order.status === 'Delivered' ? 4 : order.status === 'Cancelled' ? 1 : 3;
   const timeline = [
     { time: '24 May, 9:14 AM' }, { time: '24 May, 2:40 PM' }, { time: '25 May, 8:02 AM' }, { time: 'Today, 7:30 AM' }, { time: order.status === 'Delivered' ? order.eta : 'Est. ' + order.eta },

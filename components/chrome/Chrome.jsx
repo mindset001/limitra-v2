@@ -349,7 +349,7 @@ export function Header() {
           <div className="row" style={{ gap: 20 }}>
             <a onClick={() => go('affiliate')} style={{ cursor: 'pointer' }}>Become an Affiliate</a>
             <a onClick={() => go('help')} style={{ cursor: 'pointer' }}>Help Center</a>
-            <a onClick={() => go('tracking')} style={{ cursor: 'pointer' }}>Track Order</a>
+            <a onClick={() => go('orders')} style={{ cursor: 'pointer' }}>Track Order</a>
             <ThemeToggle />
           </div>
         </div>
@@ -449,7 +449,7 @@ export function Footer() {
   const router = useRouter();
   const cols = [
   ['Shop', [['Phones & Tablets', () => go('shop', 'phones')], ['Computers & Accessories', () => go('shop', 'computing')], ['Electronics', () => go('shop', 'electronics')], ['Women’s Fashion', () => go('shop', 'womens')], ['All deals', () => go('shop', 'deals')]]],
-  ['Account', [['My account', () => go('account')], ['Orders', () => go('orders')], ['Wishlist', () => go('wishlist')], ['Track order', () => go('tracking')], ['Sign in', () => go('auth', 'signin')]]],
+  ['Account', [['My account', () => go('account')], ['Orders', () => go('orders')], ['Wishlist', () => go('wishlist')], ['Track order', () => go('orders')], ['Sign in', () => go('auth', 'signin')]]],
   ['Support', [['Help center', () => go('help')], ['About us', () => go('about')], ['Videos', () => go('videos')], ['Channels', () => go('channels')], ['Contact us', () => go('help', 'contact')]]],
   ['Earn from Limitra', [['Become an Affiliate', () => go('affiliate')], ['Affiliate dashboard', () => router.push('/affiliate/dashboard')], ['Careers', () => go('careers')]]]];
 

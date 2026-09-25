@@ -44,7 +44,14 @@ export function StoreProvider({ children }) {
 
   /* hydrate from localStorage once on mount (avoids SSR/client markup mismatch).
      addresses/cards/referral have no fake seed anymore — they start empty until
-     a real backend (or, for addresses/cards, the user's own local entries) fills them in. */
+     a real backend (or, for addresses/cards, the user's own local entries) fills them in.
+     `hydrated` gates every persist-effect below: without it, a persist effect's
+     first run (same commit as this one, before these setState calls have landed)
+     would still see the pre-hydration default and write it straight back over
+     whatever was just read — invisible in prod where it self-corrects next tick,
+     but permanent under StrictMode's double-invoked mount, which re-hydrates from
+     that already-clobbered value. */
+  const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
     try { setTheme(localStorage.getItem('lim_theme') || 'light'); } catch (e) {}
     try { setLocalCart(JSON.parse(localStorage.getItem('lim_cart') || '[]')); } catch (e) {}
@@ -58,6 +65,7 @@ export function StoreProvider({ children }) {
     } catch (e) {}
     try { setRewards(JSON.parse(localStorage.getItem('lim_rewards') || '[]')); } catch (e) {}
     try { setSpinUsed(localStorage.getItem('lim_spin_used') === '1'); } catch (e) {}
+    setHydrated(true);
   }, []);
 
   /* backend cart/favorites — only exist for signed-in users (both routes 401 without
@@ -115,8 +123,9 @@ export function StoreProvider({ children }) {
   /* theme */
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    if (!hydrated) return;
     try { localStorage.setItem('lim_theme', theme); } catch (e) {}
-  }, [theme]);
+  }, [theme, hydrated]);
   const toggleTheme = () => setTheme(t => (t === 'light' ? 'dark' : 'light'));
 
   /* routing */
@@ -125,15 +134,16 @@ export function StoreProvider({ children }) {
     router.push(routeFor(name, params));
   }, [router]);
 
-  /* persistence */
-  useEffect(() => { try { localStorage.setItem('lim_cart', JSON.stringify(localCart)); } catch (e) {} }, [localCart]);
-  useEffect(() => { try { localStorage.setItem('lim_wish', JSON.stringify(localWish)); } catch (e) {} }, [localWish]);
-  useEffect(() => { try { localStorage.setItem('lim_addr', JSON.stringify(addresses)); } catch (e) {} }, [addresses]);
-  useEffect(() => { try { localStorage.setItem('lim_cards', JSON.stringify(cards)); } catch (e) {} }, [cards]);
-  useEffect(() => { try { localStorage.setItem('lim_search', JSON.stringify(searchHistory)); } catch (e) {} }, [searchHistory]);
-  useEffect(() => { try { localStorage.setItem('lim_referral', JSON.stringify(referral)); } catch (e) {} }, [referral]);
-  useEffect(() => { try { localStorage.setItem('lim_rewards', JSON.stringify(rewards)); } catch (e) {} }, [rewards]);
-  useEffect(() => { try { localStorage.setItem('lim_spin_used', spinUsed ? '1' : '0'); } catch (e) {} }, [spinUsed]);
+  /* persistence — gated on `hydrated` (see the hydrate effect above) so a
+     pre-hydration default never gets written back over real stored data. */
+  useEffect(() => { if (!hydrated) return; try { localStorage.setItem('lim_cart', JSON.stringify(localCart)); } catch (e) {} }, [localCart, hydrated]);
+  useEffect(() => { if (!hydrated) return; try { localStorage.setItem('lim_wish', JSON.stringify(localWish)); } catch (e) {} }, [localWish, hydrated]);
+  useEffect(() => { if (!hydrated) return; try { localStorage.setItem('lim_addr', JSON.stringify(addresses)); } catch (e) {} }, [addresses, hydrated]);
+  useEffect(() => { if (!hydrated) return; try { localStorage.setItem('lim_cards', JSON.stringify(cards)); } catch (e) {} }, [cards, hydrated]);
+  useEffect(() => { if (!hydrated) return; try { localStorage.setItem('lim_search', JSON.stringify(searchHistory)); } catch (e) {} }, [searchHistory, hydrated]);
+  useEffect(() => { if (!hydrated) return; try { localStorage.setItem('lim_referral', JSON.stringify(referral)); } catch (e) {} }, [referral, hydrated]);
+  useEffect(() => { if (!hydrated) return; try { localStorage.setItem('lim_rewards', JSON.stringify(rewards)); } catch (e) {} }, [rewards, hydrated]);
+  useEffect(() => { if (!hydrated) return; try { localStorage.setItem('lim_spin_used', spinUsed ? '1' : '0'); } catch (e) {} }, [spinUsed, hydrated]);
 
   /* search history */
   const addSearch = useCallback((q) => {
@@ -190,16 +200,19 @@ export function StoreProvider({ children }) {
 
   /* cart ops — guests stay fully local; signed-in users hit the real backend and
      re-fetch the active cart afterward rather than trust each endpoint's response
-     shape (undocumented in the API spec). Color/storage are UI-only: the backend
-     cart has no variant fields, so they're never sent and won't survive a reload
+     shape (undocumented in the API spec). `opts.variants` (a per-product-defined
+     map of group name -> {label, hex?}, from ProductPage) is UI-only: the backend
+     cart has no variant fields, so it's never sent and won't survive a reload
      once signed in. */
   const addToCart = useCallback(async (product, opts = {}, qty = 1) => {
+    const variants = opts.variants || {};
     if (!isAuthenticated) {
-      const key = [product.id, opts.color || '', opts.storage || ''].join('|');
+      const variantKey = Object.keys(variants).sort().map(k => `${k}:${variants[k].label}`).join('|');
+      const key = [product.id, variantKey].join('|');
       setLocalCart(c => {
         const ex = c.find(i => i.key === key);
         if (ex) return c.map(i => i.key === key ? { ...i, qty: i.qty + qty } : i);
-        return [...c, { key, id: product.id, qty, color: opts.color || '', storage: opts.storage || '' }];
+        return [...c, { key, id: product.id, qty, variants }];
       });
       toast(`Added to cart · ${product.name.split(',')[0]}`);
       return;
@@ -301,7 +314,7 @@ export function StoreProvider({ children }) {
      /products (and therefore real cart items) actually exist. */
   const remoteCartItems = remoteCart?.items || remoteCart?.cart_items || [];
   const cart = isAuthenticated
-    ? remoteCartItems.map(it => ({ key: it.id, id: it.product_id, qty: it.quantity, color: '', storage: '' }))
+    ? remoteCartItems.map(it => ({ key: it.id, id: it.product_id, qty: it.quantity, variants: {} }))
     : localCart;
   const wish = isAuthenticated ? favorites.map(f => f.product_id) : localWish;
 

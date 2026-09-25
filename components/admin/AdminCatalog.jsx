@@ -72,7 +72,7 @@ export function AdminProducts() {
       </div>
       {editing && <ProductEditDrawer draft={editing} onClose={() => setEditing(null)} onSave={(d) => {
         if (d._new) { t('Product created'); }
-        else { setEdits(e => ({ ...e, [d.id]: { name: d.name, brand: d.brand, price: Number(d.price) || 0, category: d.category, stock: Number(d._stock) || 0 } })); t('Changes saved'); }
+        else { setEdits(e => ({ ...e, [d.id]: { name: d.name, brand: d.brand, price: Number(d.price) || 0, category: d.category, stock: Number(d._stock) || 0, variants: d.variants || [] } })); t('Changes saved'); }
         setEditing(null);
       }} />}
       {bulk && <BulkUploadModal onClose={() => setBulk(false)} onDone={(n) => { addToast(n + ' products queued for import'); setBulk(false); }} />}
@@ -105,9 +105,76 @@ function BulkUploadModal({ onClose, onDone }) {
   );
 }
 
+/* Per-product variations (colour, storage, size, …) — the uploader defines
+   whichever groups actually apply to this product; ProductPage only renders
+   the ones present, so nothing shows for products with none. */
+function VariantGroupRow({ group, onChange, onRemove }) {
+  const [name, setName] = useState('');
+  const [hex, setHex] = useState('#0438B6');
+  const addOption = () => {
+    const v = name.trim();
+    if (!v) return;
+    const exists = group.options.some(o => (group.type === 'color' ? o.name : o) === v);
+    if (exists) return;
+    onChange({ options: [...group.options, group.type === 'color' ? { name: v, hex } : v] });
+    setName('');
+  };
+  const removeOption = (oi) => onChange({ options: group.options.filter((_, i) => i !== oi) });
+  return (
+    <div className="adm-variant-group" style={{ border: '1.5px solid var(--border)', borderRadius: 'var(--r-md)', padding: 14, marginBottom: 12 }}>
+      <div className="adm-field-row" style={{ marginBottom: 10 }}>
+        <label className="adm-field"><span>Variation name</span><input value={group.name} onChange={e => onChange({ name: e.target.value })} placeholder="e.g. Colour, Size" /></label>
+        <label className="adm-field"><span>Type</span>
+          <AdmSelect value={group.type} options={[{ value: 'text', label: 'Text options' }, { value: 'color', label: 'Colour swatches' }]} onChange={v => onChange({ type: v, options: [] })} />
+        </label>
+      </div>
+      <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+        {group.options.map((o, oi) => (
+          <span key={oi} className="adm-chip" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {group.type === 'color' && <i style={{ width: 12, height: 12, borderRadius: '50%', background: o.hex, display: 'inline-block' }} />}
+            {group.type === 'color' ? o.name : o}
+            <button type="button" onClick={() => removeOption(oi)} aria-label="Remove option" style={{ display: 'inline-flex', color: 'inherit' }}><Icon name="close" size={11} /></button>
+          </span>
+        ))}
+        {group.options.length === 0 && <span className="muted" style={{ fontSize: 12.5 }}>No options yet</span>}
+      </div>
+      <div className="adm-field-row" style={{ alignItems: 'flex-end' }}>
+        <label className="adm-field" style={{ flex: 1 }}>
+          <span>{group.type === 'color' ? 'Add colour' : 'Add option'}</span>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder={group.type === 'color' ? 'e.g. Cosmic Orange' : 'e.g. 256GB'} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addOption(); } }} />
+        </label>
+        {group.type === 'color' && (
+          <label className="adm-field" style={{ width: 56 }}>
+            <span>Swatch</span>
+            <input type="color" value={hex} onChange={e => setHex(e.target.value)} style={{ padding: 2, height: 42 }} />
+          </label>
+        )}
+        <button type="button" className="adm-btn ghost" onClick={addOption}>Add</button>
+      </div>
+      <button type="button" className="adm-btn ghost del" style={{ marginTop: 10 }} onClick={onRemove}><Icon name="trash" size={13} /> Remove variation</button>
+    </div>
+  );
+}
+
+function VariantsEditor({ variants, onChange }) {
+  const groups = variants || [];
+  const updateGroup = (i, patch) => onChange(groups.map((g, gi) => gi === i ? { ...g, ...patch } : g));
+  return (
+    <div className="adm-field">
+      <span>Variations</span>
+      {groups.map((g, i) => (
+        <VariantGroupRow key={i} group={g} onChange={patch => updateGroup(i, patch)} onRemove={() => onChange(groups.filter((_, gi) => gi !== i))} />
+      ))}
+      <button type="button" className="adm-btn ghost" style={{ alignSelf: 'flex-start' }} onClick={() => onChange([...groups, { name: '', type: 'text', options: [] }])}>
+        <Icon name="plus" size={14} /> Add variation
+      </button>
+    </div>
+  );
+}
+
 function ProductEditDrawer({ draft, onClose, onSave }) {
   const addToast = useAdminToast();
-  const [f, setF] = useState(draft);
+  const [f, setF] = useState({ ...draft, variants: draft.variants || draft._raw?.variants || [] });
   const [, force] = useState(0);
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
   const cats = [...CATEGORIES, ...ADMIN_EXTRA_CATS];
@@ -148,6 +215,7 @@ function ProductEditDrawer({ draft, onClose, onSave }) {
             <AdmSelect value={f.category} options={cats.map(c => ({ value: c.slug, label: c.name }))} onChange={v => set('category', v)} creatable onCreate={addCat} />
           </label>
           <label className="adm-field"><span>Description</span><textarea rows={3} value={f.desc || (f._raw && f._raw.desc) || ''} onChange={e => set('desc', e.target.value)} placeholder="Short product description" /></label>
+          <VariantsEditor variants={f.variants} onChange={v => set('variants', v)} />
         </div>
         <div className="adm-drawer-f">
           <button className="adm-btn ghost" onClick={onClose}>Cancel</button>

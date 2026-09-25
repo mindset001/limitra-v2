@@ -7,9 +7,9 @@ import { useStore } from '@/components/store/StoreProvider';
 import { Thumb, REAL_IMG, Placeholder, Stars, QtyStepper, Breadcrumbs, SectionHead, ProductCard, EmptyState } from '@/components/ui/Shared';
 import { ShareButton } from '@/components/share/Share';
 import { VideoStage, VID_POSTER, VIDEOS } from '@/components/video/Video';
-import { CATEGORIES, VARIANTS, naira, byId, bySlug, byCat } from '@/lib/data';
+import { CATEGORIES, naira, byId, bySlug, byCat } from '@/lib/data';
 
-function Gallery({ product, color }) {
+function Gallery({ product, variantKey }) {
   const [active, setActive] = useState(0);
   const [zoom, setZoom] = useState(false);
   const [pos, setPos] = useState({ x: 50, y: 50 });
@@ -20,7 +20,7 @@ function Gallery({ product, color }) {
   const angles = ['front', 'back', 'side', 'detail'];
   const vid = (VIDEOS || []).find(v => (v.products || []).includes(product.id));
   const VIDEO_TAB = angles.length; // index for the video view
-  useEffect(() => { if (active >= angles.length) setActive(0); }, [color]);
+  useEffect(() => { if (active >= angles.length) setActive(0); }, [variantKey]);
   const move = e => {
     if (isMobile()) return;
     const r = e.currentTarget.getBoundingClientRect();
@@ -100,14 +100,24 @@ function ReviewBreakdown({ product }) {
 export function ProductPage({ id }) {
   const { go, addToCart, toggleWish, wish, cart } = useStore();
   const product = bySlug(id) || byId(id);
-  const [color, setColor] = useState(product?.colors?.[0]?.name);
-  const [storage, setStorage] = useState(VARIANTS.storage[1]);
+  // Variation groups are defined per-product by whoever uploaded it (admin ->
+  // AdminCatalog's ProductEditDrawer) — a group only renders when the product
+  // actually has one, so a plain accessory with no colour/size shows none.
+  // `selected` maps group name -> the chosen option (the {name,hex} object for
+  // a 'color' group, or the plain string for a 'text' group).
+  const [selected, setSelected] = useState({});
   const [qty, setQty] = useState(1);
   const [tab, setTab] = useState('desc');
-  const hasStorage = !!product && ['phone', 'tablet', 'laptop'].includes(product.shot);
   const related = product ? byCat(product.category).filter(p => p.id !== product.id).slice(0, 5) : [];
   const faved = !!product && wish.includes(product.id);
-  useEffect(() => { if (!product) return; setColor(product.colors[0]?.name); setQty(1); setTab('desc'); }, [id, product]);
+  useEffect(() => {
+    if (!product) return;
+    const defaults = {};
+    (product.variants || []).forEach(g => { if (g.options?.length) defaults[g.name] = g.options[0]; });
+    setSelected(defaults);
+    setQty(1);
+    setTab('desc');
+  }, [id, product]);
 
   if (!product) {
     return (
@@ -118,14 +128,24 @@ export function ProductPage({ id }) {
     );
   }
 
-  const buy = (checkout) => { addToCart(product, { color, storage: hasStorage ? storage : '' }, qty); if (checkout) go('checkout'); };
+  const variantKey = JSON.stringify(selected);
+  const buy = (checkout) => {
+    const variants = {};
+    (product.variants || []).forEach(g => {
+      const sel = selected[g.name];
+      if (sel == null) return;
+      variants[g.name] = g.type === 'color' ? { label: sel.name, hex: sel.hex } : { label: sel };
+    });
+    addToCart(product, { variants }, qty);
+    if (checkout) go('checkout');
+  };
 
   return (
     <div className="page page-fade"><div className="wrap">
       <Breadcrumbs items={[{ label: 'Home', to: ['home'] }, { label: CATEGORIES.find(c => c.slug === product.category)?.name, to: ['shop', product.category] }, { label: product.brand }]} />
 
       <div className="pdp">
-        <Gallery product={product} color={color} />
+        <Gallery product={product} variantKey={variantKey} />
         <div className="pdp-info">
           <div className="row between">
             <span className="pc-brand" style={{ fontSize: 13 }}>{product.brand} · <span style={{ color: 'var(--text-muted)' }}>{product.store}</span></span>
@@ -145,27 +165,31 @@ export function ProductPage({ id }) {
             {product.was > 0 && <><span className="was">{naira(product.was)}</span><span className="badge badge-sale">Save {naira(product.was - product.price)}</span></>}
           </div>
 
-          <div className="variant">
-            <div className="v-label">Colour: <b>{color}</b></div>
-            <div className="swatches">
-              {product.colors.map(c => (
-                <button key={c.name} className={'swatch' + (color === c.name ? ' on' : '')} style={{ '--sw': c.hex }} title={c.name} onClick={() => setColor(c.name)}>
-                  <span style={{ background: c.hex }} />
-                </button>
-              ))}
+          {(product.variants || []).map(g => (
+            <div className="variant" key={g.name}>
+              {g.type === 'color' ? (
+                <>
+                  <div className="v-label">{g.name}: <b>{selected[g.name]?.name}</b></div>
+                  <div className="swatches">
+                    {g.options.map(c => (
+                      <button key={c.name} className={'swatch' + (selected[g.name]?.name === c.name ? ' on' : '')} style={{ '--sw': c.hex }} title={c.name} onClick={() => setSelected(s => ({ ...s, [g.name]: c }))}>
+                        <span style={{ background: c.hex }} />
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="v-label">{g.name}</div>
+                  <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                    {g.options.map(o => (
+                      <button key={o} className={'chip' + (selected[g.name] === o ? ' on' : '')} onClick={() => setSelected(s => ({ ...s, [g.name]: o }))}>{o}</button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
-          </div>
-
-          {hasStorage && (
-            <div className="variant">
-              <div className="v-label">Storage</div>
-              <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-                {VARIANTS.storage.map(s => (
-                  <button key={s} className={'chip' + (storage === s ? ' on' : '')} onClick={() => setStorage(s)}>{s}</button>
-                ))}
-              </div>
-            </div>
-          )}
+          ))}
 
           <div className="buy-row">
             <QtyStepper value={qty} onChange={q => setQty(Math.max(1, q))} />

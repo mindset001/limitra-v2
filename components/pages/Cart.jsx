@@ -122,8 +122,9 @@ export function CartPage() {
                   <span className="pc-brand">{p.brand}</span>
                   <h4 onClick={() => go('product', p.id)} style={{ cursor: 'pointer' }}>{p.name}</h4>
                   <div className="ci-meta">
-                    {it.color && <span className="ci-tag"><i style={{ background: (p.colors.find(c => c.name === it.color) || {}).hex }} />{it.color}</span>}
-                    {it.storage && <span className="ci-tag">{it.storage}</span>}
+                    {Object.entries(it.variants || {}).map(([g, v]) => (
+                      <span className="ci-tag" key={g}>{v.hex && <i style={{ background: v.hex }} />}{v.label}</span>
+                    ))}
                     <span className="row" style={{ gap: 5, color: 'var(--success)' }}><Icon name="check" size={13} stroke={3} /> In stock</span>
                   </div>
                   <div className="ci-bottom">

@@ -256,10 +256,10 @@ function Profile() {
   const CH_META = {
     app:       { name: 'Mobile App', glyph: false, icon: 'phone', cls: 'app', ph: '', note: 'Shop, track & get notifications' },
     email:     { name: 'Email', glyph: false, icon: 'mail', cls: 'email', ph: 'you@email.com', note: 'Support & notifications' },
-    WhatsApp:  { name: 'WhatsApp', glyph: true, cls: 'whatsapp', ph: '+234 800 000 0000', note: 'Shop & support via Lucy AI' },
-    Facebook:  { name: 'Facebook', glyph: true, cls: 'facebook', ph: 'facebook.com/yourpage', note: 'Shop & support via Lucy AI' },
-    Instagram: { name: 'Instagram', glyph: true, cls: 'instagram', ph: '@yourhandle', note: 'Shop & support via Lucy AI' },
-    X:         { name: 'X (Twitter)', glyph: true, cls: 'x', ph: '@yourhandle', note: 'Shop & support via Lucy AI' },
+    WhatsApp:  { name: 'WhatsApp', glyph: true, cls: 'whatsapp', ph: '+234 800 000 0000', note: 'Shop & support via Elo AI' },
+    Facebook:  { name: 'Facebook', glyph: true, cls: 'facebook', ph: 'facebook.com/yourpage', note: 'Shop & support via Elo AI' },
+    Instagram: { name: 'Instagram', glyph: true, cls: 'instagram', ph: '@yourhandle', note: 'Shop & support via Elo AI' },
+    X:         { name: 'X (Twitter)', glyph: true, cls: 'x', ph: '@yourhandle', note: 'Shop & support via Elo AI' },
   };
   const toggleCh = (k) => setChannels(s => ({ ...s, [k]: { ...s[k], connected: !s[k].connected } }));
   return (
@@ -313,7 +313,7 @@ function Profile() {
       <div className="acct-panel" style={{ maxWidth: 560, marginTop: 20 }}>
         <h3 style={{ marginBottom: 6 }}>Password</h3>
         <p className="muted" style={{ fontSize: 13.5, marginBottom: 16 }}>Last changed 3 months ago.</p>
-        <button className="btn btn-outline btn-sm">Change password</button>
+        <button className="btn btn-outline btn-sm" onClick={() => go('auth', 'forgot')}>Change password</button>
       </div>
     </>
   );

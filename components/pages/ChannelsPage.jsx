@@ -22,25 +22,25 @@ const CHANNELS = [
   },
   {
     key: 'WhatsApp', name: 'WhatsApp', cls: 'whatsapp', glyph: true, tag: 'Shop & support',
-    blurb: 'Chat with Lucy AI on WhatsApp to discover products, add to cart or wishlist, and check out, plus reach a human for support any time.',
+    blurb: 'Chat with Elo AI on WhatsApp to discover products, add to cart or wishlist, and check out, plus reach a human for support any time.',
     caps: ['browse', 'cart', 'wishlist', 'buy', 'support', 'notify'],
     how: 'Send “Hi” to the Limitra WhatsApp line, then verify with the one-time code we send to link it to your account.',
   },
   {
     key: 'Facebook', name: 'Facebook', cls: 'facebook', glyph: true, tag: 'Shop & support',
-    blurb: 'Message Limitra on Facebook and let Lucy AI help you cart, wishlist and buy products, or hand you to support when you need a person.',
+    blurb: 'Message Limitra on Facebook and let Elo AI help you cart, wishlist and buy products, or hand you to support when you need a person.',
     caps: ['browse', 'cart', 'wishlist', 'buy', 'support', 'notify'],
     how: 'Open Messenger with Limitra, tap “Get started”, and confirm the link code to connect it to your profile.',
   },
   {
     key: 'Instagram', name: 'Instagram', cls: 'instagram', glyph: true, tag: 'Shop & support',
-    blurb: 'DM us on Instagram to shop straight from posts and stories with Lucy AI, add to cart, save to wishlist, and purchase without leaving the app.',
+    blurb: 'DM us on Instagram to shop straight from posts and stories with Elo AI, add to cart, save to wishlist, and purchase without leaving the app.',
     caps: ['browse', 'cart', 'wishlist', 'buy', 'support', 'notify'],
     how: 'Send a DM to @limitra, then enter the verification code we reply with to link the handle to your account.',
   },
   {
     key: 'X', name: 'X (Twitter)', cls: 'x', glyph: true, tag: 'Shop & support',
-    blurb: 'Reach Lucy AI in your X DMs to browse, cart, wishlist and buy, or get quick help from our support team.',
+    blurb: 'Reach Elo AI in your X DMs to browse, cart, wishlist and buy, or get quick help from our support team.',
     caps: ['browse', 'cart', 'wishlist', 'buy', 'support', 'notify'],
     how: 'DM @limitra on X and reply with the one-time code to connect your handle.',
   },
@@ -80,7 +80,7 @@ export function ChannelsPage() {
         <div className="wrap">
           <span className="badge badge-soft"><Icon name="share" size={14} /> One account · every channel</span>
           <h1>Shop Limitra wherever<br />you already are.</h1>
-          <p>Discover, cart, wishlist and buy through Lucy AI on WhatsApp, Facebook, Instagram and X, or do it all in the app. Stay in the loop with notifications on every channel, and link them to one account to pick up right where you left off.</p>
+          <p>Discover, cart, wishlist and buy through Elo AI on WhatsApp, Facebook, Instagram and X, or do it all in the app. Stay in the loop with notifications on every channel, and link them to one account to pick up right where you left off.</p>
           <div className="ch-hero-row">
             {CHANNELS.map(c => (
               <span key={c.key} className={'ch-chip ' + c.cls} title={c.name}>

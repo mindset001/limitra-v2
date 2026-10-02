@@ -119,7 +119,8 @@ function AdminShell({ children }) {
               <div key={grp}>
                 <div className="adm-nav-grp">{grp}</div>
                 {items.map(([key, label, ic]) => {
-                  const on = pathname === pathForKey(key);
+                  const base = pathForKey(key);
+                  const on = pathname === base || pathname.startsWith(base + '/');
                   return (
                     <button key={key} className={'adm-link' + (on ? ' on' : '')} onClick={() => goTo(key)} title={label}>
                       <Icon name={ic} size={18} /><span>{label}</span>

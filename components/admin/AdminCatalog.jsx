@@ -3,12 +3,12 @@
    legacy/admin-sections.jsx. `window.admToast` calls were replaced with `useAdminToast()`;
    `window.__admHL` cross-page highlight was replaced with `useHighlight()` reading
    `useSearchParams().get('highlight')` (see AdminOrders / AdminInventory below). */
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Icon } from '@/components/icons/Icon';
 import { Thumb, REAL_IMG } from '@/components/ui/Shared';
-import { naira, PRODUCTS, CATEGORIES, addAdminProduct } from '@/lib/data';
-import { productsApi, categoriesApi } from '@/lib/api/endpoints';
+import { naira, PRODUCTS, CATEGORIES } from '@/lib/data';
+import { productsApi, categoriesApi, adminProductsApi } from '@/lib/api/endpoints';
 import { messageFrom } from '@/lib/api/errors';
 import { Kpi, STATUS_CLS } from '@/components/charts/Charts';
 import { useAdminToast } from './AdminToastContext';
@@ -18,63 +18,87 @@ import { AdmHead, Pager, usePager, AdmSelect, AdmDate, ADMIN_ORDERS, useHighligh
 /* module-scope, mirrors the legacy `window.ADMIN_EXTRA_CATS` mutable global */
 let ADMIN_EXTRA_CATS = [];
 
-// productsApi.create() (lib/api/endpoints.js) only models category_id/name/
-// description/price/stock/images — brand, ratings, badges and variants have no
-// backend field, so those stay client-side-only view decoration here, same as
-// before. `created` is the real backend record (id, slug if any) once the API
-// call in AdminProducts' onSave succeeds; its id replaces the temp one so a
-// later edit/delete targets the real product.
-const newProductFrom = (f, created) => {
-  const id = created?.id ?? ('adm-' + Date.now());
-  const slug = created?.slug || (f.name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || id;
-  return {
-    id, slug,
-    name: f.name.trim(),
-    brand: f.brand.trim(),
-    store: f.brand.trim() || 'Limitra',
-    category: f.category,
-    price: Number(f.price) || 0,
-    was: 0,
-    off: 0,
-    rating: 0,
-    reviews: 0,
-    stock: Number(f._stock) || 0,
-    desc: f.desc || '',
-    specs: [],
-    badges: ['new'],
-    variants: f.variants || [],
-  };
-};
+// GET /admin/products (adminProductsApi, lib/api/endpoints.js) returns the full
+// backend record — brand, sku, status (draft/published), compare_at_price,
+// is_featured, etc. — none of which the public OpenAPI spec documents. Mapped
+// here into the flat shape this table/drawer already expect; `_raw` keeps the
+// untouched record around for anything not mapped.
+const mapAdminProduct = (p) => ({
+  id: p.id,
+  slug: p.slug,
+  name: p.name,
+  brand: p.brand || '',
+  price: Number(p.price) || 0,
+  stock: p.stock ?? 0,
+  category: p.category?.slug || 'all',
+  status: p.status || 'draft',
+  desc: p.description || '',
+  variants: [],
+  _raw: p,
+});
 
-export function AdminProducts() {
+// /admin/products/[id] renders this same list page with that product's edit
+// drawer pre-opened (see app/admin/products/[id]/page.js) rather than being a
+// separate detail page — matches every other admin section, which only ever
+// has one flat list + an inline drawer, never a per-record route.
+export function AdminProducts({ editId }) {
   const addToast = useAdminToast();
+  const router = useRouter();
+  const [items, setItems] = useState([]);
+  const [loaded, setLoaded] = useState(false);
   const [q, setQ] = useState('');
   const [cat, setCat] = useState('all');
   const [sort, setSort] = useState('featured');
   const [stat, setStat] = useState('All status');
-  const [removed, setRemoved] = useState([]);
-  const [edits, setEdits] = useState({}); // id -> overrides
   const [editing, setEditing] = useState(null); // product being edited
   const [bulk, setBulk] = useState(false);
-  const [, forceList] = useState(0);
-  const cats = ['all', ...new Set(PRODUCTS.map(p => p.category))];
-  const view = (p) => ({ ...p, ...(edits[p.id] || {}) });
-  const stock = (p) => edits[p.id]?.stock != null ? edits[p.id].stock : (p.stock ?? 0);
+  const t = (m) => addToast(m);
+
+  // The admin's OWN catalog, not the storefront's — productsApi.list() (what
+  // StoreProvider's catalog loader feeds PRODUCTS from) always filters to
+  // status:"published" only, for every caller, with no override, even an admin
+  // token. A freshly created product defaults to "draft" and would never show
+  // up there — this is why a just-created product "disappeared" on refresh.
+  const loadProducts = useCallback(async () => {
+    try {
+      const res = await adminProductsApi.list({ per_page: 100 });
+      const raw = Array.isArray(res) ? res : res?.items || res?.data || [];
+      setItems(raw.map(mapAdminProduct));
+    } catch (e) {
+      t(messageFrom(e));
+    } finally {
+      setLoaded(true);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadProducts(); }, [loadProducts]);
+
+  // retries once `items` loads (so a hard refresh on /admin/products/:id still
+  // finds it); the ref stops it from reopening a drawer the admin already closed.
+  const deepLinkOpened = useRef(false);
+  useEffect(() => {
+    if (!editId || deepLinkOpened.current) return;
+    const p = items.find(x => String(x.id) === String(editId));
+    if (!p) return;
+    deepLinkOpened.current = true;
+    setEditing({ id: p.id, name: p.name, brand: p.brand, price: p.price, category: p.category, _stock: p.stock, _raw: p._raw });
+  }, [editId, items]);
+  const closeEditing = () => { setEditing(null); router.replace('/admin/products'); };
+
+  const cats = ['all', ...new Set(items.map(p => p.category))];
   const statusOf = (s) => s === 0 ? 'Out of stock' : s < 10 ? 'Low stock' : 'Active';
-  let list = PRODUCTS.filter(p => !removed.includes(p.id) && (cat === 'all' || p.category === cat) && (!q || view(p).name.toLowerCase().includes(q.toLowerCase())) && (stat === 'All status' || statusOf(stock(p)) === stat));
+  let list = items.filter(p => (cat === 'all' || p.category === cat) && (!q || p.name.toLowerCase().includes(q.toLowerCase())) && (stat === 'All status' || statusOf(p.stock) === stat));
   list = [...list].sort((a, b) => {
-    if (sort === 'price-low') return view(a).price - view(b).price;
-    if (sort === 'price-high') return view(b).price - view(a).price;
-    if (sort === 'name-az') return view(a).name.localeCompare(view(b).name);
-    if (sort === 'stock-low') return stock(a) - stock(b);
-    if (sort === 'stock-high') return stock(b) - stock(a);
+    if (sort === 'price-low') return a.price - b.price;
+    if (sort === 'price-high') return b.price - a.price;
+    if (sort === 'name-az') return a.name.localeCompare(b.name);
+    if (sort === 'stock-low') return a.stock - b.stock;
+    if (sort === 'stock-high') return b.stock - a.stock;
     return 0;
   });
   const { shown: pShown, page: pPage, pages: pPages, setPage: pSet } = usePager(list, q + cat + sort + stat);
-  const t = (m) => addToast(m);
   return (
     <>
-      <AdmHead title="Products" sub={`${PRODUCTS.length} products across ${cats.length - 1} categories`}>
+      <AdmHead title="Products" sub={`${items.length} products across ${cats.length - 1} categories`}>
         <button className="adm-btn ghost" onClick={() => setBulk(true)}><Icon name="download" size={15} /> Bulk upload</button>
         <button className="adm-btn primary" onClick={() => setEditing({ id: 'new', name: '', brand: '', price: 0, category: cats[1] || 'phones', _stock: 20, _new: true })}><Icon name="plus" size={15} /> Add product</button>
       </AdmHead>
@@ -89,36 +113,38 @@ export function AdminProducts() {
       <div className="panel" style={{ padding: 0 }}>
         <div className="adm-table-wrap"><table className="adm-table">
           <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead>
-          <tbody>{pShown.map(raw => { const p = view(raw); const s = stock(raw); return (
-            <tr key={raw.id}>
-              <td><div className="adm-prod"><span className="adm-prod-thumb"><Thumb product={raw} src={REAL_IMG[raw.id]} /></span><div><b>{p.name.split(',')[0]}</b><small>{p.brand} · {raw.slug}</small></div></div></td>
+          <tbody>{pShown.map(p => (
+            <tr key={p.id}>
+              <td><div className="adm-prod"><span className="adm-prod-thumb"><Thumb product={p} src={REAL_IMG[p.id]} /></span><div><b>{p.name.split(',')[0]}</b><small>{p.brand ? p.brand + ' · ' : ''}{p.slug}</small></div></div></td>
               <td>{CATEGORIES.find(x => x.slug === p.category)?.name || p.category}</td>
               <td><b>{naira(p.price)}</b></td>
-              <td>{s}</td>
-              <td><span className={'adm-pill ' + (s === 0 ? 'bad' : s < 10 ? 'warn' : 'ok')}>{statusOf(s)}</span></td>
-              <td><div className="adm-rowact"><button title="Edit" onClick={() => setEditing({ id: raw.id, name: p.name, brand: p.brand, price: p.price, category: p.category, _stock: s, _raw: raw })}><Icon name="edit" size={15} /></button><button className="del" title="Delete" onClick={async () => {
-                if (typeof raw.id === 'number') { try { await productsApi.remove(raw.id); } catch (e) { t(messageFrom(e)); return; } }
-                setRemoved(r => [...r, raw.id]); t('Product deleted');
+              <td>{p.stock}</td>
+              <td className="row" style={{ gap: 6 }}>
+                <span className={'adm-pill ' + (p.stock === 0 ? 'bad' : p.stock < 10 ? 'warn' : 'ok')}>{statusOf(p.stock)}</span>
+                <span className={'adm-pill ' + (p.status === 'published' ? 'ok' : 'muted')}>{p.status === 'published' ? 'Published' : 'Draft'}</span>
+              </td>
+              <td><div className="adm-rowact"><button title="Edit" onClick={() => { setEditing({ id: p.id, name: p.name, brand: p.brand, price: p.price, category: p.category, _stock: p.stock, _raw: p._raw }); router.replace('/admin/products/' + p.id); }}><Icon name="edit" size={15} /></button><button className="del" title="Delete" onClick={async () => {
+                try { await productsApi.remove(p.id); } catch (e) { t(messageFrom(e)); return; }
+                setItems(list => list.filter(x => x.id !== p.id));
+                t('Product deleted');
               }}><Icon name="trash" size={15} /></button></div></td>
             </tr>
-          ); })}</tbody>
-        </table>{list.length === 0 && <div style={{ padding: '28px', textAlign: 'center', color: 'var(--text-faint)' }}>No products match your filters.</div>}<Pager page={pPage} pages={pPages} onPage={pSet} /></div>
+          ))}</tbody>
+        </table>{loaded && list.length === 0 && <div style={{ padding: '28px', textAlign: 'center', color: 'var(--text-faint)' }}>No products match your filters.</div>}<Pager page={pPage} pages={pPages} onPage={pSet} /></div>
       </div>
-      {editing && <ProductEditDrawer draft={editing} onClose={() => setEditing(null)} onSave={async (d) => {
-        const cat = [...CATEGORIES, ...ADMIN_EXTRA_CATS].find(c => c.slug === d.category);
-        const body = { category_id: cat?.id, name: d.name.trim(), description: d.desc || '', price: Number(d.price) || 0, stock: Number(d._stock) || 0 };
+      {editing && <ProductEditDrawer draft={editing} onClose={closeEditing} onSave={async (d) => {
+        const catObj = [...CATEGORIES, ...ADMIN_EXTRA_CATS].find(c => c.slug === d.category);
+        const body = { category_id: catObj?.id, name: d.name.trim(), description: d.desc || '', price: Number(d.price) || 0, stock: Number(d._stock) || 0 };
         try {
           if (d._new) {
-            const created = await productsApi.create(body);
-            addAdminProduct(newProductFrom(d, created));
-            forceList(n => n + 1);
-            t('Product created');
+            await productsApi.create(body);
+            t('Product created as a draft — publish it from the backend to show on the storefront.');
           } else {
             await productsApi.update(d.id, body);
-            setEdits(e => ({ ...e, [d.id]: { name: d.name, brand: d.brand, price: Number(d.price) || 0, category: d.category, stock: Number(d._stock) || 0, variants: d.variants || [] } }));
             t('Changes saved');
           }
-          setEditing(null);
+          await loadProducts();
+          closeEditing();
         } catch (e) {
           t(messageFrom(e));
         }

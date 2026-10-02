@@ -3,11 +3,22 @@
    Routing changes from a hash router to next/navigation; everything else is unchanged. */
 import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { naira, byId } from '@/lib/data';
+import { naira, byId, REAL_IMG, slugify, setCategories, setSubcats, setProducts } from '@/lib/data';
 import { routeFor, parseRoute } from '@/lib/routes';
 import { getToken, clearTokens } from '@/lib/auth';
-import { authApi, profileApi, cartApi, cartItemsApi, favoritesApi } from '@/lib/api/endpoints';
+import { authApi, profileApi, cartApi, cartItemsApi, favoritesApi, categoriesApi, productsApi } from '@/lib/api/endpoints';
 import { messageFrom } from '@/lib/api/errors';
+
+// cosmetic placeholder tints, cycled per category — the backend has no color/theme
+// field for a category, this just keeps empty-image product cards visually varied.
+const CAT_TINTS = [
+  ['rgba(4,56,182,.12)', 'rgba(4,56,182,.04)'],
+  ['rgba(246,114,8,.14)', 'rgba(246,114,8,.05)'],
+  ['rgba(16,122,69,.12)', 'rgba(16,122,69,.04)'],
+  ['rgba(142,85,230,.12)', 'rgba(142,85,230,.04)'],
+  ['rgba(229,72,77,.12)', 'rgba(229,72,77,.04)'],
+  ['rgba(201,137,10,.12)', 'rgba(201,137,10,.04)'],
+];
 
 const StoreCtx = createContext(null);
 export const useStore = () => useContext(StoreCtx);
@@ -91,15 +102,26 @@ export function StoreProvider({ children }) {
      lib/api/endpoints.js: authApi.me() (id/username/email/role) + profileApi.get()
      (first_name/last_name/phone/etc.) together make up the real profile.
      Exposed as refreshUser() so a fresh login can populate `user` immediately
-     instead of waiting for the next full page load. */
+     instead of waiting for the next full page load. Returns the resolved user
+     (or null) directly so a caller like AuthPage can route on `role` right away
+     instead of reading back a `user` that may not have re-rendered into its
+     closure yet. */
   const refreshUser = useCallback(async () => {
-    if (!getToken()) { setUser(null); setRemoteCart(null); setFavorites([]); setAuthLoading(false); return; }
+    if (!getToken()) { setUser(null); setRemoteCart(null); setFavorites([]); setAuthLoading(false); return null; }
     try {
-      const [me, profile] = await Promise.all([authApi.me(), profileApi.get()]);
-      setUser({ ...me, ...profile });
+      const me = await authApi.me();
+      // profileApi.get() 404s/500s for accounts with no profile row yet (seen
+      // live on at least one admin account) — that's not a reason to drop a
+      // session authApi.me() already proved valid, so it's non-fatal here.
+      let profile = null;
+      try { profile = await profileApi.get(); } catch (e) { /* no profile yet, proceed with `me` alone */ }
+      const resolved = { ...me, ...profile };
+      setUser(resolved);
       loadCartAndFavorites();
+      return resolved;
     } catch (e) {
       setUser(null); clearTokens();
+      return null;
     } finally {
       setAuthLoading(false);
     }
@@ -113,6 +135,81 @@ export function StoreProvider({ children }) {
     setRemoteCart(null);
     setFavorites([]);
   }, []);
+
+  /* catalog — categories + products, both public (no auth) endpoints. Mutates
+     the shared CATEGORIES/SUBCATS/PRODUCTS arrays/objects from lib/data.js in
+     place (see their definitions for why) and bumps `catalogVersion` so every
+     useStore() consumer re-renders and picks up the now-populated data on its
+     next render. Response shapes aren't in the OpenAPI schema (no Product/
+     Category component defined) so fields are read defensively; anything the
+     real UI needs but the backend doesn't model yet (discounts, badges,
+     ratings, brand) is left at a neutral default rather than invented. Fails
+     open: an error here just leaves the catalog empty, same as today. */
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogVersion, setCatalogVersion] = useState(0);
+  const loadCatalog = useCallback(async () => {
+    try {
+      const [rawCats, rawProductsRes] = await Promise.all([
+        categoriesApi.list().catch(() => []),
+        productsApi.list({ per_page: 100 }).catch(() => null),
+      ]);
+      const catList = Array.isArray(rawCats) ? rawCats : rawCats?.items || rawCats?.data || [];
+
+      const catsById = {};
+      const mappedCats = catList.map((c, i) => {
+        const slug = c.slug || slugify(c.name) || `category-${c.id}`;
+        const mapped = {
+          id: c.id,
+          slug,
+          name: c.name,
+          count: c.products_count ?? c.product_count ?? c.count ?? 0,
+          tint: CAT_TINTS[i % CAT_TINTS.length],
+        };
+        catsById[c.id] = mapped;
+        return mapped;
+      });
+      const subcats = {};
+      catList.forEach(c => {
+        const slug = catsById[c.id]?.slug;
+        const subs = c.subcategories || c.subCategories || [];
+        if (slug && Array.isArray(subs) && subs.length) subcats[slug] = subs.map(s => s.name).filter(Boolean);
+      });
+
+      const rawProducts = Array.isArray(rawProductsRes) ? rawProductsRes : rawProductsRes?.items || rawProductsRes?.data || [];
+      const mappedProducts = rawProducts.map(p => {
+        const cat = catsById[p.category_id];
+        if (Array.isArray(p.images) && p.images[0]) REAL_IMG[p.id] = p.images[0];
+        return {
+          id: p.id,
+          slug: p.slug || slugify(p.name) || `product-${p.id}`,
+          name: p.name,
+          brand: p.brand || '',
+          price: Number(p.price) || 0,
+          was: Number(p.compare_at_price) || 0,
+          off: 0,
+          stock: p.stock ?? 0,
+          category: cat?.slug || 'all',
+          description: p.description || '',
+          rating: Number(p.rating) || 0,
+          reviews: Number(p.reviews_count ?? p.reviews) || 0,
+          badges: p.stock === 0 ? ['out-of-stock'] : [],
+          bestseller: false,
+          tint: cat?.tint || CAT_TINTS[0],
+        };
+      });
+
+      setCategories(mappedCats);
+      setSubcats(subcats);
+      setProducts(mappedProducts);
+      setCatalogVersion(v => v + 1);
+    } catch (e) {
+      // leave the catalog empty — every page already renders a graceful
+      // "coming soon" state for CATEGORIES/PRODUCTS.length === 0
+    } finally {
+      setCatalogLoading(false);
+    }
+  }, []);
+  useEffect(() => { loadCatalog(); }, [loadCatalog]);
 
   useEffect(() => {
     const onSignup = () => setSpinUsed(false);
@@ -326,6 +423,7 @@ export function StoreProvider({ children }) {
   const value = {
     theme, toggleTheme, route, go,
     user, isAuthenticated, authLoading, logout, refreshUser,
+    catalogLoading, catalogVersion, loadCatalog,
     cart, addToCart, setQty, removeItem, clearCart, cartCount, cartTotal,
     wish, toggleWish,
     addresses, saveAddress, removeAddress, setPrimaryAddress,

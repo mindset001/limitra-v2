@@ -7,20 +7,25 @@ import { useAdminToast } from './AdminToastContext';
 import { AdmHead, AdmSelect } from './AdminShared';
 
 /* ---------- CMS ---------- */
+// Starter seed content an admin is expected to edit — module scope so AdminCMS's
+// tile subtitles can report the real counts instead of hardcoded numbers.
+const CMS_HERO_SLIDES = [
+  { title: 'Premium marketplace, smarter shopping.', sub: 'Quality products. Secure shopping. Reliable delivery.', cta: 'Shop Now' },
+  { title: 'Elevate every listening moment.', sub: 'Discover premium audio equipment.', cta: 'Shop audio' },
+  { title: 'Wear your confidence every day.', sub: 'Fresh-season clothing and footwear.', cta: 'Shop fashion' },
+];
+const CMS_FAQS = [
+  { q: 'How long does delivery take?', a: 'Standard delivery takes 10–14 days nationwide.' },
+  { q: 'What payment methods are accepted?', a: 'Cards, bank transfer and pay-on-delivery in select cities.' },
+  { q: 'What is your return policy?', a: 'Returns accepted within 7 days of delivery.' },
+];
+
 function CmsManageDrawer({ item, onClose }) {
   const addToast = useAdminToast();
   const [tab, setTab] = useState(0);
   const key = item[0];
-  const heroSlides = [
-    { title: 'Premium marketplace, smarter shopping.', sub: 'Quality products. Secure shopping. Reliable delivery.', cta: 'Shop Now' },
-    { title: 'Elevate every listening moment.', sub: 'Discover premium audio equipment.', cta: 'Shop audio' },
-    { title: 'Wear your confidence every day.', sub: 'Fresh-season clothing and footwear.', cta: 'Shop fashion' },
-  ];
-  const faqs = [
-    { q: 'How long does delivery take?', a: 'Standard delivery takes 10–14 days nationwide.' },
-    { q: 'What payment methods are accepted?', a: 'Cards, bank transfer and pay-on-delivery in select cities.' },
-    { q: 'What is your return policy?', a: 'Returns accepted within 7 days of delivery.' },
-  ];
+  const heroSlides = CMS_HERO_SLIDES;
+  const faqs = CMS_FAQS;
   const isHero = key === 'Homepage hero';
   const isBanner = key === 'Featured banners';
   const isFaq = key === 'FAQs';
@@ -89,7 +94,7 @@ function CmsManageDrawer({ item, onClose }) {
 
 export function AdminCMS() {
   const [manage, setManage] = useState(null);
-  const items = [['Homepage hero', 'Carousel slides & banners', 'spark'], ['Featured banners', 'Promo placements', 'tag'], ['Blog posts', '14 published', 'edit'], ['FAQs', '23 entries', 'info'], ['Terms & Conditions', 'Last updated May 2026', 'shield'], ['Privacy Policy', 'Last updated May 2026', 'lock']];
+  const items = [['Homepage hero', `${CMS_HERO_SLIDES.length} slides`, 'spark'], ['Featured banners', 'Promo placements', 'tag'], ['Blog posts', 'No posts yet', 'edit'], ['FAQs', `${CMS_FAQS.length} entries`, 'info'], ['Terms & Conditions', 'Starter content', 'shield'], ['Privacy Policy', 'Starter content', 'lock']];
   return (
     <>
       <AdmHead title="Content" sub="Manage site content & pages" />
@@ -106,24 +111,8 @@ const ADMIN_ROLES = [['Super Admin', 'Full access to everything', 1, '#0438B6'],
 const ROLE_PERMS = ['Dashboard & analytics', 'Product management', 'Order management', 'Customer management', 'Affiliate management', 'Referral management', 'Video management', 'AI assistant', 'Coupons & promotions', 'Inventory', 'Roles & permissions', 'Website settings'];
 
 const ROLE_NAMES = ['Super Admin', 'Admin', 'Manager', 'Customer Support', 'Marketing Manager', 'Inventory Manager'];
-const STAFF = [
-  ['Emmanuel Adefioye', 'adefioyeemman@gmail.com', 'Super Admin'],
-  ['Saint John', 'saintjohnus@gmail.com', 'Super Admin'],
-  ['Kola Bassey', 'kola@limitra.ng', 'Admin'],
-  ['Bolaji Ahmed', 'bolaji@limitra.ng', 'Admin'],
-  ['Ngozi Eze', 'ngozi@limitra.ng', 'Admin'],
-  ['Tunde Bello', 'tunde@limitra.ng', 'Manager'],
-  ['Aisha Sani', 'aisha@limitra.ng', 'Manager'],
-  ['Femi Cole', 'femi@limitra.ng', 'Manager'],
-  ['Chidi Obi', 'chidi@limitra.ng', 'Manager'],
-  ['Zainab Yusuf', 'zainab@limitra.ng', 'Manager'],
-  ['Grace Udo', 'grace@limitra.ng', 'Customer Support'],
-  ['Peter Ade', 'peter@limitra.ng', 'Customer Support'],
-  ['Mary John', 'mary@limitra.ng', 'Customer Support'],
-  ['Sade Okoro', 'sade@limitra.ng', 'Marketing Manager'],
-  ['Ibrahim Musa', 'ibrahim@limitra.ng', 'Marketing Manager'],
-  ['Helen Paul', 'helen@limitra.ng', 'Inventory Manager'],
-];
+// No staff-directory backend yet — stays genuinely empty rather than fake people.
+const STAFF = [];
 
 function RoleDrawer({ role, onClose, members, roleNames, onAssign, onAdd, onRemove }) {
   const addToast = useAdminToast();
@@ -131,9 +120,11 @@ function RoleDrawer({ role, onClose, members, roleNames, onAssign, onAdd, onRemo
   const [name, setName] = useState(role ? role[0] : '');
   const [desc, setDesc] = useState(role ? role[1] : '');
   const full = role && role[0] === 'Super Admin';
+  // No stored per-role permissions backend yet — only Super Admin starts fully
+  // on; every other role starts with nothing granted rather than an arbitrary pattern.
   const [perms, setPerms] = useState(() => {
     const o = {};
-    ROLE_PERMS.forEach((p, i) => { o[p] = full ? true : (role ? i % 2 === 0 : false); });
+    ROLE_PERMS.forEach((p) => { o[p] = full; });
     return o;
   });
   const toggle = (p) => { if (full) return; setPerms(m => ({ ...m, [p]: !m[p] })); };

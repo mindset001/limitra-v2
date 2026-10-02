@@ -18,7 +18,8 @@ export function Kpi({ ic, tint, label, val, delta, up }) {
 }
 
 export function BarChart({ data, labels, alt }) {
-  const max = Math.max(...data);
+  const max = Math.max(0, ...data);
+  if (max === 0) return <div className="chart-empty">No data yet</div>;
   return (
     <div className="bars">
       {data.map((v, i) =>
@@ -33,6 +34,7 @@ export function BarChart({ data, labels, alt }) {
 
 export function Donut({ segments }) {
   const total = segments.reduce((s, x) => s + x.v, 0);
+  if (total === 0) return <div className="chart-empty">No data yet</div>;
   let acc = 0;
   const stops = segments.map((s) => {const start = acc / total * 360;acc += s.v;const end = acc / total * 360;return `${s.c} ${start}deg ${end}deg`;}).join(', ');
   return (

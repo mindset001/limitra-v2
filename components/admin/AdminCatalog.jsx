@@ -7,7 +7,9 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Icon } from '@/components/icons/Icon';
 import { Thumb, REAL_IMG } from '@/components/ui/Shared';
-import { naira, PRODUCTS, CATEGORIES } from '@/lib/data';
+import { naira, PRODUCTS, CATEGORIES, addAdminProduct } from '@/lib/data';
+import { productsApi, categoriesApi } from '@/lib/api/endpoints';
+import { messageFrom } from '@/lib/api/errors';
 import { Kpi, STATUS_CLS } from '@/components/charts/Charts';
 import { useAdminToast } from './AdminToastContext';
 import { AdmHead, Pager, usePager, AdmSelect, AdmDate, ADMIN_ORDERS, useHighlight } from './AdminShared';
@@ -15,6 +17,34 @@ import { AdmHead, Pager, usePager, AdmSelect, AdmDate, ADMIN_ORDERS, useHighligh
 /* ---------- PRODUCTS ---------- */
 /* module-scope, mirrors the legacy `window.ADMIN_EXTRA_CATS` mutable global */
 let ADMIN_EXTRA_CATS = [];
+
+// productsApi.create() (lib/api/endpoints.js) only models category_id/name/
+// description/price/stock/images — brand, ratings, badges and variants have no
+// backend field, so those stay client-side-only view decoration here, same as
+// before. `created` is the real backend record (id, slug if any) once the API
+// call in AdminProducts' onSave succeeds; its id replaces the temp one so a
+// later edit/delete targets the real product.
+const newProductFrom = (f, created) => {
+  const id = created?.id ?? ('adm-' + Date.now());
+  const slug = created?.slug || (f.name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || id;
+  return {
+    id, slug,
+    name: f.name.trim(),
+    brand: f.brand.trim(),
+    store: f.brand.trim() || 'Limitra',
+    category: f.category,
+    price: Number(f.price) || 0,
+    was: 0,
+    off: 0,
+    rating: 0,
+    reviews: 0,
+    stock: Number(f._stock) || 0,
+    desc: f.desc || '',
+    specs: [],
+    badges: ['new'],
+    variants: f.variants || [],
+  };
+};
 
 export function AdminProducts() {
   const addToast = useAdminToast();
@@ -26,9 +56,10 @@ export function AdminProducts() {
   const [edits, setEdits] = useState({}); // id -> overrides
   const [editing, setEditing] = useState(null); // product being edited
   const [bulk, setBulk] = useState(false);
+  const [, forceList] = useState(0);
   const cats = ['all', ...new Set(PRODUCTS.map(p => p.category))];
   const view = (p) => ({ ...p, ...(edits[p.id] || {}) });
-  const stock = (p) => edits[p.id]?.stock != null ? edits[p.id].stock : p.id.charCodeAt(1) * 7 % 60;
+  const stock = (p) => edits[p.id]?.stock != null ? edits[p.id].stock : (p.stock ?? 0);
   const statusOf = (s) => s === 0 ? 'Out of stock' : s < 10 ? 'Low stock' : 'Active';
   let list = PRODUCTS.filter(p => !removed.includes(p.id) && (cat === 'all' || p.category === cat) && (!q || view(p).name.toLowerCase().includes(q.toLowerCase())) && (stat === 'All status' || statusOf(stock(p)) === stat));
   list = [...list].sort((a, b) => {
@@ -65,17 +96,34 @@ export function AdminProducts() {
               <td><b>{naira(p.price)}</b></td>
               <td>{s}</td>
               <td><span className={'adm-pill ' + (s === 0 ? 'bad' : s < 10 ? 'warn' : 'ok')}>{statusOf(s)}</span></td>
-              <td><div className="adm-rowact"><button title="Edit" onClick={() => setEditing({ id: raw.id, name: p.name, brand: p.brand, price: p.price, category: p.category, _stock: s, _raw: raw })}><Icon name="edit" size={15} /></button><button className="del" title="Delete" onClick={() => { setRemoved(r => [...r, raw.id]); t('Product deleted'); }}><Icon name="trash" size={15} /></button></div></td>
+              <td><div className="adm-rowact"><button title="Edit" onClick={() => setEditing({ id: raw.id, name: p.name, brand: p.brand, price: p.price, category: p.category, _stock: s, _raw: raw })}><Icon name="edit" size={15} /></button><button className="del" title="Delete" onClick={async () => {
+                if (typeof raw.id === 'number') { try { await productsApi.remove(raw.id); } catch (e) { t(messageFrom(e)); return; } }
+                setRemoved(r => [...r, raw.id]); t('Product deleted');
+              }}><Icon name="trash" size={15} /></button></div></td>
             </tr>
           ); })}</tbody>
         </table>{list.length === 0 && <div style={{ padding: '28px', textAlign: 'center', color: 'var(--text-faint)' }}>No products match your filters.</div>}<Pager page={pPage} pages={pPages} onPage={pSet} /></div>
       </div>
-      {editing && <ProductEditDrawer draft={editing} onClose={() => setEditing(null)} onSave={(d) => {
-        if (d._new) { t('Product created'); }
-        else { setEdits(e => ({ ...e, [d.id]: { name: d.name, brand: d.brand, price: Number(d.price) || 0, category: d.category, stock: Number(d._stock) || 0, variants: d.variants || [] } })); t('Changes saved'); }
-        setEditing(null);
+      {editing && <ProductEditDrawer draft={editing} onClose={() => setEditing(null)} onSave={async (d) => {
+        const cat = [...CATEGORIES, ...ADMIN_EXTRA_CATS].find(c => c.slug === d.category);
+        const body = { category_id: cat?.id, name: d.name.trim(), description: d.desc || '', price: Number(d.price) || 0, stock: Number(d._stock) || 0 };
+        try {
+          if (d._new) {
+            const created = await productsApi.create(body);
+            addAdminProduct(newProductFrom(d, created));
+            forceList(n => n + 1);
+            t('Product created');
+          } else {
+            await productsApi.update(d.id, body);
+            setEdits(e => ({ ...e, [d.id]: { name: d.name, brand: d.brand, price: Number(d.price) || 0, category: d.category, stock: Number(d._stock) || 0, variants: d.variants || [] } }));
+            t('Changes saved');
+          }
+          setEditing(null);
+        } catch (e) {
+          t(messageFrom(e));
+        }
       }} />}
-      {bulk && <BulkUploadModal onClose={() => setBulk(false)} onDone={(n) => { addToast(n + ' products queued for import'); setBulk(false); }} />}
+      {bulk && <BulkUploadModal onClose={() => setBulk(false)} onDone={() => { addToast('Import isn’t connected yet'); setBulk(false); }} />}
     </>
   );
 }
@@ -98,7 +146,7 @@ function BulkUploadModal({ onClose, onDone }) {
         </div>
         <div className="adm-drawer-f">
           <button className="adm-btn ghost" onClick={onClose}>Cancel</button>
-          <button className="adm-btn primary" disabled={!file} onClick={() => onDone(Math.floor(8 + Math.random() * 40))}>Import products</button>
+          <button className="adm-btn primary" disabled={!file} onClick={() => onDone()}>Import products</button>
         </div>
       </div>
     </>
@@ -178,11 +226,17 @@ function ProductEditDrawer({ draft, onClose, onSave }) {
   const [, force] = useState(0);
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
   const cats = [...CATEGORIES, ...ADMIN_EXTRA_CATS];
-  const addCat = (name) => {
+  const addCat = async (name) => {
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    if (!cats.some(c => c.slug === slug)) ADMIN_EXTRA_CATS.push({ slug, name });
-    set('category', slug); force(n => n + 1);
-    addToast('Category “' + name + '” added');
+    if (cats.some(c => c.slug === slug)) { set('category', slug); return; }
+    try {
+      const created = await categoriesApi.create({ name });
+      ADMIN_EXTRA_CATS.push({ slug, name, id: created?.id });
+      set('category', slug); force(n => n + 1);
+      addToast('Category “' + name + '” added');
+    } catch (e) {
+      addToast(messageFrom(e));
+    }
   };
   return (
     <>
@@ -219,7 +273,7 @@ function ProductEditDrawer({ draft, onClose, onSave }) {
         </div>
         <div className="adm-drawer-f">
           <button className="adm-btn ghost" onClick={onClose}>Cancel</button>
-          <button className="adm-btn primary" onClick={() => onSave(f)}>{f._new ? 'Create product' : 'Save changes'}</button>
+          <button className="adm-btn primary" disabled={!f.name.trim() || !f.brand.trim()} onClick={() => onSave(f)}>{f._new ? 'Create product' : 'Save changes'}</button>
         </div>
       </aside>
     </>
@@ -229,13 +283,9 @@ function ProductEditDrawer({ draft, onClose, onSave }) {
 /* ---------- ORDERS ---------- */
 function InvoiceModal({ order, onClose }) {
   const addToast = useAdminToast();
-  const lines = [
-    ['Wireless Noise-Cancelling Headphones', 1, Math.round(order.total * 0.46)],
-    ['Fast Charge Power Bank 20,000mAh', 1, Math.round(order.total * 0.22)],
-    ['USB-C Braided Cable (2m)', 2, Math.round(order.total * 0.08)],
-  ];
-  const sub = lines.reduce((s, l) => s + l[2] * l[1], 0);
-  const ship = Math.max(0, order.total - sub);
+  // No order-items backend yet — show the real total only, not a fabricated breakdown.
+  const sub = order.total;
+  const ship = 0;
   return (
     <>
       <div className="adm-drawer-scrim" onClick={onClose} />
@@ -254,12 +304,7 @@ function InvoiceModal({ order, onClose }) {
             </div>
           </div>
           <div className="inv-billto"><span className="muted">Billed to</span><b>{order.customer}</b></div>
-          <table className="inv-table">
-            <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Amount</th></tr></thead>
-            <tbody>{lines.map((l, i) => (
-              <tr key={i}><td>{l[0]}</td><td>{l[1]}</td><td>{naira(l[2])}</td><td><b>{naira(l[2] * l[1])}</b></td></tr>
-            ))}</tbody>
-          </table>
+          <p className="muted" style={{ fontSize: 13, margin: '10px 0' }}>Itemized breakdown isn’t available yet.</p>
           <div className="inv-totals">
             <div><span className="muted">Subtotal</span><span>{naira(sub)}</span></div>
             <div><span className="muted">Shipping</span><span>{ship === 0 ? 'Free' : naira(ship)}</span></div>
@@ -324,7 +369,8 @@ export function AdminOrders() {
 }
 
 /* ---------- COUPONS ---------- */
-const ADMIN_COUPONS = [['WELCOME15', '15% off first order', 1204, 'Active'], ['CASH5K', '₦5,000 spin reward', 842, 'Active'], ['FLASH40', 'Flash sale 40%', 3120, 'Scheduled'], ['FREESHIP', 'Free shipping', 640, 'Active'], ['EID20', 'Eid promo 20%', 980, 'Expired']];
+// Starter coupon templates — `uses` isn't faked since there's no redemption backend yet.
+const ADMIN_COUPONS = [['WELCOME15', '15% off first order', 0, 'Active'], ['CASH5K', '₦5,000 spin reward', 0, 'Active'], ['FLASH40', 'Flash sale 40%', 0, 'Scheduled'], ['FREESHIP', 'Free shipping', 0, 'Active'], ['EID20', 'Eid promo 20%', 0, 'Expired']];
 export function AdminCoupons() {
   const addToast = useAdminToast();
   const [coupons, setCoupons] = useState(ADMIN_COUPONS.map(c => ({ code: c[0], desc: c[1], uses: c[2], status: c[3] })));
@@ -428,10 +474,9 @@ export function AdminInventory() {
   const [q, setQ] = useState('');
   const [stat, setStat] = useState('All');
   const [sort, setSort] = useState('stock-low');
-  const stk = (p) => p.id.charCodeAt(1) * 3 % 12;
+  const stk = (p) => p.stock ?? 0;
   const statusOf = (s) => s === 0 ? 'Out of stock' : s < 6 ? 'Low stock' : 'In stock';
-  const base = PRODUCTS.filter((p, i) => i % 2 === 0).slice(0, 24);
-  let low = base.filter(p => (!q || p.name.toLowerCase().includes(q.toLowerCase()) || p.slug.toLowerCase().includes(q.toLowerCase())) && (stat === 'All' || statusOf(stk(p)) === stat));
+  let low = PRODUCTS.filter(p => (!q || p.name.toLowerCase().includes(q.toLowerCase()) || p.slug.toLowerCase().includes(q.toLowerCase())) && (stat === 'All' || statusOf(stk(p)) === stat));
   low = [...low].sort((a, b) => {
     if (sort === 'stock-high') return stk(b) - stk(a);
     if (sort === 'name-az') return a.name.localeCompare(b.name);
@@ -443,8 +488,8 @@ export function AdminInventory() {
       <AdmHead title="Inventory" sub="Stock levels & alerts" />
       <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
         <Kpi ic="package" tint="#0438B6" label="SKUs tracked" val={PRODUCTS.length} delta="" up />
-        <Kpi ic="info" tint="#F5A623" label="Low stock" val="14" delta="" up />
-        <Kpi ic="close" tint="#E5484D" label="Out of stock" val="3" delta="" up />
+        <Kpi ic="info" tint="#F5A623" label="Low stock" val={PRODUCTS.filter(p => statusOf(stk(p)) === 'Low stock').length} delta="" up />
+        <Kpi ic="close" tint="#E5484D" label="Out of stock" val={PRODUCTS.filter(p => statusOf(stk(p)) === 'Out of stock').length} delta="" up />
       </div>
       <div className="adm-filters">
         <div className="adm-mini-search"><Icon name="search" size={16} className="muted" /><input placeholder="Search products or SKU…" value={q} onChange={e => setQ(e.target.value)} /></div>

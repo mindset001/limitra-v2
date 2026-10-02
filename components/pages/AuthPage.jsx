@@ -125,10 +125,10 @@ export function AuthPage({ mode = 'signin' }) {
     if (m === 'signin' && !isSocial) {
       try {
         await authApi.login({ email: f.id.trim(), password: f.pass });
-        await refreshUser();
+        const signedIn = await refreshUser();
         setLoading(false);
         toast('Welcome back!');
-        go('account');
+        go(signedIn?.role === 'admin' ? 'admin' : 'account');
       } catch (err) {
         setLoading(false);
         applyErrors(err, { id: 'email', pass: 'password' });
@@ -182,11 +182,11 @@ export function AuthPage({ mode = 'signin' }) {
           setM('signin');
         } else {
           await authApi.verifyEmail({ email: pendingEmail, otp });
-          await refreshUser();
+          const verified = await refreshUser();
           setLoading(false);
           toast('Verified!');
           try { window.dispatchEvent(new Event('lim:signup')); } catch (e) {}
-          go('account');
+          go(verified?.role === 'admin' ? 'admin' : 'account');
         }
       } catch (err) {
         setLoading(false);

@@ -1,0 +1,86 @@
+/* LIMITRA, MicroStores (public marketing/landing page) */
+
+/* hero */
+.ms-hero { background: linear-gradient(150deg, var(--navy) 0%, var(--navy-700) 55%, #161D45 100%); padding: 60px 0 68px; position: relative; overflow: hidden; }
+.ms-hero::after { content: ''; position: absolute; left: -120px; bottom: -120px; width: 420px; height: 420px; border-radius: 50%; background: radial-gradient(circle, rgba(246,114,8,.3), transparent 70%); filter: blur(20px); }
+.ms-hero-grid { display: grid; grid-template-columns: 1.15fr .85fr .85fr; gap: 36px; align-items: center; position: relative; z-index: 1; }
+.ms-hero-copy .badge-soft { background: rgba(255,255,255,.16); color: #fff; margin-bottom: 20px; }
+.ms-hero-copy h1 { color: #fff; font-size: clamp(32px, 4.2vw, 52px); line-height: 1.06; letter-spacing: -.025em; }
+.ms-hero-copy h1 .hl { color: var(--orange-soft); }
+.ms-hero-copy > p { color: rgba(255,255,255,.82); font-size: 16.5px; margin: 18px 0 28px; max-width: 460px; text-wrap: pretty; }
+.ms-hero-trust { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 22px; margin-top: 26px; max-width: 460px; }
+.ms-hero-trust span { display: flex; align-items: flex-start; gap: 9px; font-family: var(--font-display); font-weight: 600; font-size: 13px; line-height: 1.35; color: rgba(255,255,255,.9); }
+.ms-hero-trust svg { color: var(--orange-soft); flex: none; margin-top: 1px; }
+
+.ms-phone { background: var(--surface); border-radius: 30px; padding: 10px; box-shadow: var(--shadow-pop); max-width: 230px; margin: 0 auto; }
+.ms-phone-screen { background: var(--surface-2); border-radius: 22px; overflow: hidden; }
+.ms-phone-head { display: flex; align-items: center; gap: 9px; padding: 12px 12px 10px; background: var(--surface); }
+.ms-phone-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: #fff; display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: 13px; flex: none; }
+.ms-phone-head b { display: block; font-family: var(--font-display); font-weight: 700; font-size: 12.5px; line-height: 1.3; }
+.ms-phone-head small { display: block; color: var(--text-faint); font-size: 10.5px; }
+.ms-phone-tabs { display: flex; gap: 6px; padding: 0 12px 10px; overflow: hidden; }
+.ms-phone-tabs span { font-family: var(--font-display); font-weight: 600; font-size: 10.5px; padding: 4px 9px; border-radius: var(--r-pill); background: var(--surface); color: var(--text-faint); white-space: nowrap; }
+.ms-phone-tabs span.on { background: var(--primary); color: #fff; }
+.ms-phone-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 12px 12px; }
+.ms-phone-item { background: var(--surface); border-radius: var(--r-md); padding: 6px; text-align: center; }
+.ms-phone-thumb { position: relative; aspect-ratio: 1; border-radius: var(--r-sm); overflow: hidden; margin-bottom: 5px; }
+.ms-phone-thumb .ph span { font-size: 8px; }
+.ms-phone-item b { display: block; font-family: var(--font-display); font-weight: 700; font-size: 11px; }
+
+.ms-hero-perks { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); border-radius: var(--r-xl); padding: 20px; backdrop-filter: blur(6px); }
+.ms-hero-perks-ic { width: 46px; height: 46px; border-radius: var(--r-lg); background: var(--orange); color: #fff; display: grid; place-items: center; margin-bottom: 14px; }
+.ms-hero-url { display: inline-flex; align-items: center; gap: 8px; background: rgba(251,146,60,.18); border: 1px solid rgba(251,146,60,.4); color: var(--orange-soft); font-family: var(--font-display); font-weight: 700; font-size: 12.5px; padding: 7px 12px; border-radius: var(--r-pill); margin-bottom: 16px; }
+.ms-hero-perk-list { display: flex; flex-direction: column; gap: 11px; }
+.ms-hero-perk-list span { display: flex; align-items: center; gap: 9px; font-family: var(--font-display); font-weight: 600; font-size: 13px; color: rgba(255,255,255,.92); }
+.ms-hero-perk-list svg { color: var(--orange-soft); flex: none; }
+
+/* comparison */
+.ms-compare { display: grid; grid-template-columns: 1fr auto 1fr; gap: 22px; align-items: stretch; }
+.ms-compare-card { border-radius: var(--r-xl); padding: 26px; display: flex; flex-direction: column; gap: 16px; }
+.ms-compare-card.plain { background: var(--surface-2); border: 1px solid var(--border); }
+.ms-compare-card.highlight { background: color-mix(in srgb, var(--orange) 7%, var(--surface)); border: 1.5px solid var(--orange); }
+.ms-compare-top { display: flex; align-items: flex-start; gap: 14px; }
+.ms-compare-ic { width: 46px; height: 46px; border-radius: var(--r-md); display: grid; place-items: center; flex: none; }
+.ms-compare-card.plain .ms-compare-ic { background: var(--primary-soft); color: var(--primary); }
+.ms-compare-card.highlight .ms-compare-ic { background: var(--orange); color: #fff; }
+.ms-compare-top b { font-family: var(--font-display); font-weight: 700; font-size: 19px; display: block; }
+.ms-compare-top p { font-size: 13.5px; color: var(--text-muted); margin-top: 4px; text-wrap: pretty; }
+.ms-url-pill { display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: 10px 14px; font-family: var(--font-display); font-weight: 700; font-size: 13px; }
+.ms-compare-card.plain .ms-url-pill { color: var(--text-muted); }
+.ms-compare-card.highlight .ms-url-pill { color: var(--orange); border-color: color-mix(in srgb, var(--orange) 35%, var(--border)); }
+.ms-url-pill svg { cursor: pointer; color: var(--text-faint); }
+.ms-check-list { display: flex; flex-direction: column; gap: 10px; }
+.ms-check-list span { display: flex; align-items: center; gap: 9px; font-size: 13.5px; font-weight: 600; color: var(--text); }
+.ms-check-list svg { width: 17px; height: 17px; border-radius: 50%; background: var(--orange); color: #fff; padding: 2px; flex: none; }
+.ms-vs-badge { align-self: center; width: 44px; height: 44px; border-radius: 50%; background: var(--orange); color: #fff; display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: 13px; box-shadow: var(--shadow-sm); }
+
+/* featured stores */
+.ms-stores { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 18px; }
+.ms-store-card { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.ms-store-head { display: flex; align-items: center; gap: 11px; }
+.ms-store-avatar { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: #fff; flex: none; }
+.ms-store-head b { display: block; font-family: var(--font-display); font-weight: 700; font-size: 14.5px; }
+.ms-store-head small { color: var(--text-faint); font-size: 11.5px; }
+.ms-store-thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.ms-store-thumb { position: relative; aspect-ratio: 1; border-radius: var(--r-sm); overflow: hidden; }
+.ms-store-thumb .ph span { font-size: 7px; }
+
+/* final CTA */
+.ms-cta { background: linear-gradient(120deg, var(--orange) 0%, #FF8A3D 60%, #FFAE5C 100%); border-radius: var(--r-xl); padding: 40px; text-align: center; }
+[data-theme="dark"] .ms-cta { background: linear-gradient(120deg, #C9560A, #E5650A 60%, #F67208 100%); }
+.ms-cta h2 { color: #fff; font-size: clamp(24px, 3vw, 32px); }
+.ms-cta p { color: rgba(255,255,255,.88); margin: 10px 0 22px; }
+
+@media (max-width: 980px) {
+  .ms-hero-grid { grid-template-columns: 1fr; gap: 30px; text-align: left; }
+  .ms-phone { margin: 0; }
+  .ms-hero-visual { display: flex; gap: 24px; flex-wrap: wrap; }
+  .ms-compare { grid-template-columns: 1fr; }
+  .ms-vs-badge { justify-self: center; }
+}
+@media (max-width: 640px) {
+  .ms-hero { padding: 40px 0 48px; }
+  .ms-hero-trust { grid-template-columns: 1fr; }
+  .ms-hero-visual { flex-direction: column; }
+  .ms-stores { grid-template-columns: repeat(2, 1fr); }
+}

@@ -410,6 +410,25 @@ export function ImageShowcase() {
   );
 }
 
+function MicroStoreBanner() {
+  const { go } = useStore();
+  return (
+    <section className="sec" style={{ paddingTop: 8 }}>
+      <div className="wrap">
+        <div className="promo-card navy reveal" style={{ minHeight: 170 }} onClick={() => go('microstores')}>
+          <div>
+            <span className="eyebrow" style={{ color: 'var(--orange-soft)' }}>Limitra MicroStores™ <span className="nav-badge-new">New</span></span>
+            <h3>Your store.<br />Zero inventory.</h3>
+            <p>Curate products, share one link, and earn on every delivered sale.</p>
+            <span className="promo-link">Create my store <Icon name="arrowr" size={15} /></span>
+          </div>
+          <div className="promo-ph"><Placeholder label="storefront" product={{ tint: ['rgba(255,255,255,.14)', 'rgba(255,255,255,.05)'] }} /></div>
+        </div>
+      </div>
+    </section>);
+
+}
+
 function PromoBanners() {
   const { go } = useStore();
   return (
@@ -481,6 +500,7 @@ export function HomePage() {
   return (
     <div className="page-fade">
       <div className="wrap" style={{ paddingTop: 28 }}><HeroGrid /></div>
+      <MicroStoreBanner />
       <AffiliatePicks />
       <FlashDeals />
       <ProductRow eyebrow="Best sellers" title="Trending this week" items={trending} cat="trending" />

@@ -6,25 +6,11 @@
    AdminInventory, the three pages that had `data-hlkey` rows). */
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/icons/Icon';
-import { PRODUCTS } from '@/lib/data';
 import { useAdminToast } from './AdminToastContext';
 
-// admin dashboard is out of scope for the storefront data cleanup (no live
-// backend for order listing yet) — kept as an empty seed so this file's
-// existing demo logic still runs without a lib/data ORDERS mock.
-const ORDERS = [];
-
-/* ---------- derived demo metrics (verbatim from legacy/admin.jsx) ---------- */
-export const ADMIN_ORDERS = (() => {
-  const base = ORDERS.map((o) => ({ ...o, customer: ['Lucy Limitra', 'Chidinma O.', 'Tunde A.', 'Bola K.'][Math.floor(Math.random() * 4)] }));
-  // expand to a fuller list for the table
-  const extra = PRODUCTS.slice(0, 8).map((p, i) => ({
-    id: 'LMT-' + (90000 - i * 137), date: ['Today', 'Yesterday', '2 days ago', '3 days ago'][i % 4],
-    status: ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Refunded'][i % 6],
-    total: p.price, items: 1 + i % 3, eta: ',', customer: ['Ada N.', 'Emeka U.', 'Zainab M.', 'Femi A.', 'Ngozi P.', 'Kunle S.', 'Aisha B.', 'Dapo O.'][i]
-  }));
-  return [...base, ...extra];
-})();
+// No orders-listing backend yet — stays genuinely empty rather than
+// synthesizing fake orders from the product catalog.
+export const ADMIN_ORDERS = [];
 
 export const ADMIN_NAV = [
 ['Overview', [['dashboard', 'Dashboard', 'grid'], ['analytics', 'Analytics', 'spark']]],

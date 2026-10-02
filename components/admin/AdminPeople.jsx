@@ -11,25 +11,15 @@ import { useAdminToast } from './AdminToastContext';
 import { AdmHead, Pager, usePager, Toggle, AdmSelect, useHighlight } from './AdminShared';
 
 /* ---------- CUSTOMERS ---------- */
-const ADMIN_CUSTOMERS = [
-  ['Lucy Limitra', 'lucy@limitra.ng', 24, 4820000, 'Active'],
-  ['Chidinma Okeke', 'chidinma.o@email.com', 12, 1640000, 'Active'],
-  ['Tunde Adeyemi', 'tunde.a@email.com', 8, 980000, 'Active'],
-  ['Bola Kareem', 'bola.k@email.com', 3, 412000, 'Active'],
-  ['Emeka Uche', 'emeka.u@email.com', 19, 2890000, 'Active'],
-  ['Zainab Musa', 'zainab.m@email.com', 1, 84000, 'Suspended'],
-  ['Femi Alabi', 'femi.a@email.com', 6, 720000, 'Active'],
-];
+// No customers backend yet — stays genuinely empty rather than fake accounts.
+const ADMIN_CUSTOMERS = [];
 function CustomerDrawer({ cust, status: extStatus, onStatusChange, onClose }) {
   const addToast = useAdminToast();
   const [status, setStatus] = useState(extStatus || cust[4]);
   const [resetSent, setResetSent] = useState(false);
   const suspended = status === 'Suspended';
-  const orders = [
-    ['LMT-90412', 'Delivered', 84000, '12 Jun 2026'],
-    ['LMT-88107', 'Delivered', 156500, '28 May 2026'],
-    ['LMT-85220', 'Cancelled', 42000, '14 May 2026'],
-  ];
+  // No per-customer order/rewards backend yet — stays empty rather than fake history.
+  const orders = [];
   const resetPwd = () => { setResetSent(true); addToast('Password reset link sent to ' + cust[1]); };
   const toggleSuspend = () => {
     const next = suspended ? 'Active' : 'Suspended';
@@ -58,12 +48,14 @@ function CustomerDrawer({ cust, status: extStatus, onStatusChange, onClose }) {
           <div className="adm-cust-stats">
             <div><span className="muted">Orders</span><b>{cust[2]}</b></div>
             <div><span className="muted">Lifetime value</span><b>{naira(cust[3])}</b></div>
-            <div><span className="muted">Lim Cash</span><b>{naira(7000)}</b></div>
+            <div><span className="muted">Lim Cash</span><b>{naira(0)}</b></div>
           </div>
 
           <h4 className="adm-sec-label">Purchase history</h4>
           <div className="adm-cust-orders">
-            {orders.map((o, i) => (
+            {orders.length === 0
+              ? <small className="muted">No orders yet.</small>
+              : orders.map((o, i) => (
               <div className="adm-cust-order" key={i}>
                 <div><b>{o[0]}</b><small className="muted">{o[3]}</small></div>
                 <span className={'adm-pill ' + (o[1] === 'Delivered' ? 'ok' : o[1] === 'Cancelled' ? 'bad' : 'warn')}>{o[1]}</span>
@@ -74,8 +66,7 @@ function CustomerDrawer({ cust, status: extStatus, onStatusChange, onClose }) {
 
           <h4 className="adm-sec-label">Rewards & referrals</h4>
           <div className="adm-cust-rewards">
-            <div className="adm-cust-reward"><span className="adm-cust-rico ok"><Icon name="gift" size={16} /></span><div><b>WELCOME5000</b><small className="muted">₦5,000 signup spin · active</small></div></div>
-            <div className="adm-cust-reward"><span className="adm-cust-rico"><Icon name="share" size={16} /></span><div><b>3 successful referrals</b><small className="muted">₦21,000 earned in Lim Cash</small></div></div>
+            <small className="muted">No rewards or referrals yet.</small>
           </div>
 
           <h4 className="adm-sec-label">Reset password</h4>
@@ -112,11 +103,11 @@ export function AdminCustomers() {
   const { shown: cShown, page: cPage, pages: cPages, setPage: cSet } = usePager(list, q);
   return (
     <>
-      <AdmHead title="Customers" sub="4,820 registered customers"><button className="adm-btn ghost"><Icon name="download" size={15} /> Export</button></AdmHead>
+      <AdmHead title="Customers" sub={`${ADMIN_CUSTOMERS.length} registered customers`}><button className="adm-btn ghost"><Icon name="download" size={15} /> Export</button></AdmHead>
       <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
-        <Kpi ic="user" tint="#0438B6" label="Total customers" val="4,820" delta="5.6%" up />
-        <Kpi ic="spark" tint="#1F8A5B" label="New this month" val="612" delta="14%" up />
-        <Kpi ic="refresh" tint="#7A5AE0" label="Retention" val="38%" delta="2%" up />
+        <Kpi ic="user" tint="#0438B6" label="Total customers" val={ADMIN_CUSTOMERS.length} delta="" up />
+        <Kpi ic="spark" tint="#1F8A5B" label="New this month" val="0" delta="" up />
+        <Kpi ic="refresh" tint="#7A5AE0" label="Retention" val="0%" delta="" up />
       </div>
       <div className="adm-filters"><div className="adm-mini-search"><Icon name="search" size={16} className="muted" /><input placeholder="Search customers…" value={q} onChange={e => setQ(e.target.value)} /></div></div>
       <div className="panel" style={{ padding: 0 }}>
@@ -132,7 +123,7 @@ export function AdminCustomers() {
                 : <button className="del" title="Suspend" onClick={() => toggleSuspend(c)}><Icon name="close" size={15} /></button>}</div></td>
             </tr>
           ); })}</tbody>
-        </table><Pager page={cPage} pages={cPages} onPage={cSet} /></div>
+        </table>{list.length === 0 && <div style={{ padding: '28px', textAlign: 'center', color: 'var(--text-faint)' }}>No customers yet.</div>}<Pager page={cPage} pages={cPages} onPage={cSet} /></div>
       </div>
       {view && <CustomerDrawer cust={view} status={stOf(view)} onStatusChange={(s) => setStatusMap(m => ({ ...m, [view[1]]: s }))} onClose={() => setView(null)} />}
     </>
@@ -140,30 +131,12 @@ export function AdminCustomers() {
 }
 
 /* ---------- AFFILIATES ---------- */
-const ADMIN_AFFILIATES = [
-  ['Chidinma O.', 'IG · 84k', 312, 1980000, 'Approved'],
-  ['Tunde A.', 'X · 41k', 184, 1240000, 'Approved'],
-  ['Bella Styles', 'TikTok · 220k', 540, 3120000, 'Approved'],
-  ['Kunle Tech', 'YouTube · 65k', 98, 640000, 'Pending'],
-  ['Aisha Beauty', 'IG · 132k', 276, 1740000, 'Approved'],
-  ['Dapo Reviews', 'Blog · 28k', 41, 290000, 'Suspended'],
-  ['Ngozi Hauls', 'TikTok · 96k', 203, 1310000, 'Approved'],
-  ['Femi Gadgets', 'YouTube · 112k', 167, 1080000, 'Approved'],
-  ['Zara Glam', 'IG · 58k', 88, 520000, 'Pending'],
-  ['Emeka Plug', 'X · 33k', 54, 360000, 'Approved'],
-  ['Lola Trends', 'TikTok · 178k', 421, 2460000, 'Approved'],
-  ['Sadia Picks', 'Blog · 19k', 27, 180000, 'Pending'],
-  ['Bayo Tech', 'YouTube · 47k', 73, 470000, 'Approved'],
-  ['Halima Beauty', 'IG · 204k', 389, 2280000, 'Approved'],
-  ['Chuka Reviews', 'X · 22k', 31, 210000, 'Suspended'],
-];
+// No affiliates backend yet — stays genuinely empty rather than fake partners.
+const ADMIN_AFFILIATES = [];
 function AffiliateDrawer({ aff, status, paid, onStatusChange, onPay, onClose }) {
   const addToast = useAdminToast();
-  const payouts = [
-    ['28 May 2026', 320000, 'Paid'],
-    ['28 Apr 2026', 280000, 'Paid'],
-    ['28 Mar 2026', 195000, 'Paid'],
-  ];
+  // No payout history backend yet — stays empty rather than fake records.
+  const payouts = [];
   const act = (next, msg) => { onStatusChange && onStatusChange(next); addToast(msg); };
   return (
     <>
@@ -187,7 +160,9 @@ function AffiliateDrawer({ aff, status, paid, onStatusChange, onPay, onClose }) 
           </div>
           <h4 className="adm-sec-label">Payout history</h4>
           <div className="adm-cust-orders">
-            {payouts.map((p, i) => (
+            {payouts.length === 0
+              ? <small className="muted">No payouts yet.</small>
+              : payouts.map((p, i) => (
               <div className="adm-cust-order" key={i}>
                 <div><b>{naira(p[1])}</b><small className="muted">{p[0]}</small></div>
                 <span className="adm-pill ok">{p[2]}</span>
@@ -268,10 +243,10 @@ export function AdminAffiliates() {
     <>
       <AdmHead title="Affiliates" sub="Manage partners, commissions and payouts"><button className="adm-btn primary" onClick={() => setInvite(true)}><Icon name="plus" size={15} /> Invite affiliate</button></AdmHead>
       <div className="kpi-grid">
-        <Kpi ic="share" tint="#0438B6" label="Active affiliates" val="1,284" delta="9%" up />
-        <Kpi ic="dollar" tint="#1F8A5B" label="Affiliate revenue" val={naira(2840000)} delta="18%" up />
-        <Kpi ic="eye" tint="#F67208" label="Avg conversion" val="4.2%" delta="0.6%" up />
-        <Kpi ic="truck" tint="#7A5AE0" label="Pending payouts" val={naira(486000)} delta="" up />
+        <Kpi ic="share" tint="#0438B6" label="Active affiliates" val={ADMIN_AFFILIATES.length} delta="" up />
+        <Kpi ic="dollar" tint="#1F8A5B" label="Affiliate revenue" val={naira(0)} delta="" up />
+        <Kpi ic="eye" tint="#F67208" label="Avg conversion" val="0%" delta="" up />
+        <Kpi ic="truck" tint="#7A5AE0" label="Pending payouts" val={naira(0)} delta="" up />
       </div>
       <div className="adm-filters">
         <div className="adm-mini-search"><Icon name="search" size={16} className="muted" /><input placeholder="Search affiliates or channel…" value={q} onChange={e => setQ(e.target.value)} /></div>
@@ -304,13 +279,13 @@ export function AdminReferrals() {
     <>
       <AdmHead title="Referrals" sub="Lim Cash reward program" />
       <div className="kpi-grid">
-        <Kpi ic="dollar" tint="#1F8A5B" label="Reward per referral" val={naira(5000)} delta="" up />
-        <Kpi ic="user" tint="#0438B6" label="Successful referrals" val="1,842" delta="11%" up />
-        <Kpi ic="gift" tint="#F67208" label="Lim Cash issued" val={naira(12894000)} delta="" up />
-        <Kpi ic="refresh" tint="#7A5AE0" label="Redemption rate" val="62%" delta="4%" up />
+        <Kpi ic="dollar" tint="#1F8A5B" label="Reward per referral" val={naira(7000)} delta="" up />
+        <Kpi ic="user" tint="#0438B6" label="Successful referrals" val="0" delta="" up />
+        <Kpi ic="gift" tint="#F67208" label="Lim Cash issued" val={naira(0)} delta="" up />
+        <Kpi ic="refresh" tint="#7A5AE0" label="Redemption rate" val="0%" delta="" up />
       </div>
       <div className="adm-row c2">
-        <div className="panel"><div className="panel-h"><h3>Referrals over time</h3></div><BarChart data={[120, 142, 168, 154, 196, 228, 254, 286]} labels={['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8']} alt /></div>
+        <div className="panel"><div className="panel-h"><h3>Referrals over time</h3></div><BarChart data={[0, 0, 0, 0, 0, 0, 0, 0]} labels={['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8']} alt /></div>
         <div className="panel"><div className="panel-h"><h3>Program settings</h3></div>
           <div className="adm-list">
             <div className="adm-li"><div className="adm-li-main"><b>Reward amount</b><small>Lim Cash per completed referral</small></div><input className="cfg-row" style={{ width: 90, textAlign: 'center', padding: 7, border: '1.5px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }} defaultValue="₦7,000" /></div>

@@ -36,10 +36,10 @@ export function AdminSpin() {
         <button className="adm-btn ghost" onClick={() => setPrizes(ps => [...ps, { name: 'New reward', weight: 0, color: PALETTE[ps.length % PALETTE.length] }])}><Icon name="plus" size={15} /> Add reward</button>
       </AdmHead>
       <div className="kpi-grid">
-        <Kpi ic="gift" tint="#F67208" label="Total spins" val="3,418" delta="22%" up />
-        <Kpi ic="tag" tint="#0438B6" label="Coupons generated" val="3,418" delta="22%" up />
-        <Kpi ic="check" tint="#1F8A5B" label="Coupons redeemed" val="1,204" delta="9%" up />
-        <Kpi ic="dollar" tint="#7A5AE0" label="Revenue attributed" val={naira(8420000)} delta="16%" up />
+        <Kpi ic="gift" tint="#F67208" label="Total spins" val="0" delta="" up />
+        <Kpi ic="tag" tint="#0438B6" label="Coupons generated" val="0" delta="" up />
+        <Kpi ic="check" tint="#1F8A5B" label="Coupons redeemed" val="0" delta="" up />
+        <Kpi ic="dollar" tint="#7A5AE0" label="Revenue attributed" val={naira(0)} delta="" up />
       </div>
       <div className="adm-row c2">
         <div className="panel"><div className="panel-h"><h3>Reward probabilities</h3><span className={'muted' + (total !== 100 ? ' warn-text' : '')} style={{ fontSize: 12.5, fontWeight: 700, color: total !== 100 ? 'var(--gold)' : 'var(--success)' }}>{total}% total</span></div>
@@ -86,10 +86,10 @@ export function AdminVideos() {
     <>
       <AdmHead title="Videos" sub={`${V.length} videos · demos, reviews, reels`}><button className="adm-btn primary" onClick={() => setEdit({ _new: true, title: '', cat: 'Demos', dur: '0:30' })}><Icon name="plus" size={15} /> Upload video</button></AdmHead>
       <div className="kpi-grid">
-        <Kpi ic="eye" tint="#0438B6" label="Total views" val="438K" delta="19%" up />
-        <Kpi ic="clock" tint="#1F8A5B" label="Avg watch time" val="42s" delta="3%" up />
-        <Kpi ic="bag" tint="#F67208" label="Product clicks" val="12.4K" delta="11%" up />
-        <Kpi ic="dollar" tint="#7A5AE0" label="Sales from video" val={naira(3640000)} delta="24%" up />
+        <Kpi ic="eye" tint="#0438B6" label="Total views" val="0" delta="" up />
+        <Kpi ic="clock" tint="#1F8A5B" label="Avg watch time" val="0s" delta="" up />
+        <Kpi ic="bag" tint="#F67208" label="Product clicks" val="0" delta="" up />
+        <Kpi ic="dollar" tint="#7A5AE0" label="Sales from video" val={naira(0)} delta="" up />
       </div>
       <div className="panel" style={{ padding: 0 }}>
         <div className="adm-table-wrap"><table className="adm-table">
@@ -136,8 +136,8 @@ function VideoEditDrawer({ draft, onClose, onSave }) {
         </div>
         <div className="role-modal-b">
           <label className="adm-img-drop" style={{ height: 160 }}>
-            {f.id && !f._file ? <img src={VID_POSTER[f.id]} alt="" className="adm-img-preview" /> : f._file ? <span className="adm-img-empty"><Icon name="check" size={26} stroke={3} /><b>{f._file}</b><small>Ready to upload · {f.dur || 'duration detected on upload'}</small></span> : <span className="adm-img-empty"><Icon name="video" size={26} /><b>Upload video file</b><small>MP4, MOV or WEBM · up to 500MB</small></span>}
-            <input type="file" accept="video/mp4,video/quicktime,video/webm" hidden onChange={(e) => { const fl = e.target.files && e.target.files[0]; if (fl) { set('_file', fl.name); set('dur', ['0:48', '1:12', '1:30', '2:05'][Math.floor(Math.random() * 4)]); addToast('Video attached, duration detected'); } }} />
+            {f.id && !f._file ? <img src={VID_POSTER[f.id]} alt="" className="adm-img-preview" /> : f._file ? <span className="adm-img-empty"><Icon name="check" size={26} stroke={3} /><b>{f._file}</b><small>Ready to upload</small></span> : <span className="adm-img-empty"><Icon name="video" size={26} /><b>Upload video file</b><small>MP4, MOV or WEBM · up to 500MB</small></span>}
+            <input type="file" accept="video/mp4,video/quicktime,video/webm" hidden onChange={(e) => { const fl = e.target.files && e.target.files[0]; if (fl) { set('_file', fl.name); addToast('Video attached'); } }} />
           </label>
           <label className="adm-field"><span>Title</span><input value={f.title} onChange={e => set('title', e.target.value)} placeholder="Video title" /></label>
           <div className="adm-field-row">
@@ -184,21 +184,24 @@ function VideoAssignModal({ draft, onClose, onSave }) {
 
 /* ---------- ELO AI ---------- */
 export function AdminElo() {
-  const qs = [['Where is my order?', 412], ['Recommend a phone under ₦400k', 318], ['Do you have this in black?', 264], ['What’s the return policy?', 201], ['Best laptop for students', 188]];
+  // No conversation-logging backend yet — stays empty rather than fake question stats.
+  const qs = [];
   return (
     <>
       <AdmHead title="Elo AI" sub="Assistant performance & knowledge base"><button className="adm-btn ghost"><Icon name="download" size={15} /> Upload knowledge doc</button></AdmHead>
       <div className="kpi-grid">
-        <Kpi ic="headset" tint="#0438B6" label="Conversations" val="1,932" delta="24%" up />
-        <Kpi ic="check" tint="#1F8A5B" label="Resolution rate" val="87%" delta="3%" up />
-        <Kpi ic="heart" tint="#D6247C" label="Satisfaction" val="4.6/5" delta="0.2" up />
-        <Kpi ic="bag" tint="#F67208" label="AI-driven sales" val={naira(1980000)} delta="15%" up />
+        <Kpi ic="headset" tint="#0438B6" label="Conversations" val="0" delta="" up />
+        <Kpi ic="check" tint="#1F8A5B" label="Resolution rate" val="0%" delta="" up />
+        <Kpi ic="heart" tint="#D6247C" label="Satisfaction" val="—" delta="" up />
+        <Kpi ic="bag" tint="#F67208" label="AI-driven sales" val={naira(0)} delta="" up />
       </div>
       <div className="adm-row c2">
         <div className="panel"><div className="panel-h"><h3>Most asked questions</h3></div>
-          <div className="adm-list">{qs.map((qq, i) => <div className="adm-li" key={i}><span className="adm-li-av">{i + 1}</span><div className="adm-li-main"><b style={{ fontSize: 13.5 }}>{qq[0]}</b></div><b style={{ fontFamily: 'var(--font-display)' }}>{qq[1]}</b></div>)}</div>
+          <div className="adm-list">{qs.length === 0
+            ? <div style={{ padding: '18px 4px', textAlign: 'center', color: 'var(--text-faint)' }}>No conversations yet.</div>
+            : qs.map((qq, i) => <div className="adm-li" key={i}><span className="adm-li-av">{i + 1}</span><div className="adm-li-main"><b style={{ fontSize: 13.5 }}>{qq[0]}</b></div><b style={{ fontFamily: 'var(--font-display)' }}>{qq[1]}</b></div>)}</div>
         </div>
-        <div className="panel"><div className="panel-h"><h3>Conversation volume</h3></div><BarChart data={[180, 210, 264, 248, 312, 356, 402]} labels={['M', 'T', 'W', 'T', 'F', 'S', 'S']} alt /></div>
+        <div className="panel"><div className="panel-h"><h3>Conversation volume</h3></div><BarChart data={[0, 0, 0, 0, 0, 0, 0]} labels={['M', 'T', 'W', 'T', 'F', 'S', 'S']} alt /></div>
       </div>
     </>
   );

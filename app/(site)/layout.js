@@ -13,6 +13,7 @@ import '@/styles/pages.css';
 import '@/styles/shop.css';
 import '@/styles/flows.css';
 import '@/styles/affiliate.css';
+import '@/styles/microstores.css';
 import '@/styles/careers.css';
 import '@/styles/videos.css';
 import '@/styles/spin.css';

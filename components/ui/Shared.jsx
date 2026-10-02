@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '@/components/icons/Icon';
 import { useStore } from '@/components/store/StoreProvider';
-import { naira, CATEGORIES } from '@/lib/data';
+import { naira, CATEGORIES, REAL_IMG } from '@/lib/data';
+
+export { REAL_IMG };
 
 /* product image placeholder with category tint */
 export function Placeholder({ product, label }) {
@@ -42,12 +44,6 @@ export function Price({ now, was, size }) {
     </span>
   );
 }
-
-export const REAL_IMG = { /* a few products get real photos */
-  p1: '/assets/img/cat-03.jpg',
-  p2: '/assets/img/cat-02.jpg',
-  iphone17promax: '/assets/img/ip17-orange-front.webp',
-};
 
 export function ProductCard({ product, compact }) {
   const { go, addToCart, toggleWish, wish } = useStore();

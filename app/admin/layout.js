@@ -14,23 +14,41 @@
    (same convention app/affiliate/dashboard/layout.js uses for its own admin.css + extra). */
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import '@/styles/admin.css';
 import { Icon } from '@/components/icons/Icon';
 import { ADMIN_NAV, ADMIN_ORDERS } from '@/components/admin/AdminShared';
 import { AdminToastProvider } from '@/components/admin/AdminToastContext';
+import { StoreProvider, useStore } from '@/components/store/StoreProvider';
 
 const pathForKey = (key) => '/admin' + (key === 'dashboard' ? '' : '/' + key);
 
+/* /admin isn't under the (site) route group, so it has no StoreProvider of its
+   own by default — this layout mounts one just for the admin tree so the route
+   guard and the account menu can read the real signed-in session instead of the
+   old `lim_admin` localStorage stand-in. */
 export default function AdminLayout({ children }) {
+  return (
+    <Suspense fallback={null}>
+      <StoreProvider>
+        <AdminShell>{children}</AdminShell>
+      </StoreProvider>
+    </Suspense>
+  );
+}
+
+function AdminShell({ children }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { user, isAuthenticated, authLoading, logout } = useStore();
 
-  /* route guard, super admin only (client-side only — see HANDOFF.md, no real backend yet) */
+  /* route guard — admin role only, server-enforced role lives on `user.role`
+     (authApi.me()). Wait for the session to resolve before deciding so a
+     signed-in admin doesn't get bounced during the brief authLoading window. */
   useEffect(() => {
-    let adm = null;
-    try { adm = JSON.parse(localStorage.getItem('lim_admin') || 'null'); } catch (e) {}
-    if (!adm) router.replace('/access-denied?need=admin');
-  }, [router]);
+    if (authLoading) return;
+    if (!isAuthenticated || user?.role !== 'admin') router.replace('/access-denied?need=admin');
+  }, [authLoading, isAuthenticated, user, router]);
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobOpen, setMobOpen] = useState(false);
@@ -46,27 +64,30 @@ export default function AdminLayout({ children }) {
     return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
   }, [notifOpen]);
 
-  const [admin, setAdmin] = useState(null);
   const [acctOpen, setAcctOpen] = useState(false);
-  /* hydrate theme + admin from localStorage once on mount (avoids SSR/client markup mismatch) */
+  /* hydrate theme from localStorage once on mount (avoids SSR/client markup mismatch) */
   useEffect(() => {
     try { setTheme(localStorage.getItem('lim_theme') || 'light'); } catch (e) {}
-    try { setAdmin(JSON.parse(localStorage.getItem('lim_admin') || 'null')); } catch (e) {}
   }, []);
-  const adm = admin || { name: 'Super Admin', role: 'Super Admin', initials: 'SA', email: 'adefioyeemman@gmail.com' };
 
-  const [notifs, setNotifs] = useState([
-    { ic: 'truck', tint: 'info', title: 'New order LMT-92481', body: '₦641,000 · 2 items, needs processing', time: '5 min ago', read: false, go: 'orders', match: 'LMT-92481' },
-    { ic: 'package', tint: 'warn', title: 'Low stock alert', body: 'Aura Pro ANC Headphones, 4 left', time: '40 min ago', read: false, go: 'inventory', match: 'Aura Pro' },
-    { ic: 'share', tint: 'ok', title: 'New affiliate application', body: 'Tunde A. applied to the program', time: '2 hrs ago', read: false, go: 'affiliates', match: 'Tunde A.' },
-    { ic: 'gift', tint: 'accent', title: 'Coupon redeemed', body: 'WELCOME10_42 used at checkout', time: '3 hrs ago', read: true, go: 'spin' },
-    { ic: 'dollar', tint: 'ok', title: 'Referral completed', body: 'Chidinma O., ₦7,000 Lim Cash issued', time: 'Yesterday', read: true, go: 'referrals', match: 'Chidinma' },
-  ]);
-  const unread = notifs.filter(n => !n.read).length;
+  // No notifications backend yet — starts empty rather than showing fake activity.
+  const [notifs, setNotifs] = useState([]);
 
   useEffect(() => { document.documentElement.setAttribute('data-theme', theme); try { localStorage.setItem('lim_theme', theme); } catch (e) {} }, [theme]);
 
-  const counts = { orders: ADMIN_ORDERS.filter(o => o.status === 'Pending').length, affiliates: 1 };
+  const adminName = user?.username || [user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.email || 'Admin';
+  const adm = {
+    name: adminName,
+    role: 'Admin',
+    initials: adminName.slice(0, 2).toUpperCase(),
+    email: user?.email || '',
+  };
+
+  if (authLoading || !isAuthenticated || user?.role !== 'admin') return null;
+
+  const unread = notifs.filter(n => !n.read).length;
+  // No pending-affiliate-applications backend yet — real zero rather than a fake badge count.
+  const counts = { orders: ADMIN_ORDERS.filter(o => o.status === 'Pending').length, affiliates: 0 };
 
   const goTo = (key) => { router.push(pathForKey(key)); setMobOpen(false); };
   const notifClick = (i, nf) => {
@@ -78,8 +99,8 @@ export default function AdminLayout({ children }) {
     }
     setNotifOpen(false);
   };
-  const signOut = () => {
-    try { localStorage.removeItem('lim_admin'); } catch (e) {}
+  const signOut = async () => {
+    try { await logout(); } catch (e) {}
     window.location.href = '/';
   };
 
@@ -115,7 +136,7 @@ export default function AdminLayout({ children }) {
           <div className="adm-top">
             <button className="adm-burger" onClick={() => { if (window.matchMedia('(max-width: 860px)').matches) setMobOpen(o => !o); else setCollapsed(c => !c); }} aria-label="Toggle menu"><Icon name="menu" size={20} /></button>
             <div className="adm-top-actions">
-              <a className="adm-icon-btn" href="/" title="View store"><Icon name="store" size={19} /></a>
+              <Link className="adm-icon-btn" href="/" title="View store"><Icon name="store" size={19} /></Link>
               <button className="adm-icon-btn" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} title="Theme"><Icon name={theme === 'dark' ? 'sun' : 'moon'} size={19} /></button>
               <div className="adm-notif-wrap" ref={notifRef}>
                 <button className={'adm-icon-btn' + (notifOpen ? ' on' : '')} onClick={() => setNotifOpen(o => !o)} title="Notifications"><Icon name="bell" size={19} />{unread > 0 && <span className="adm-dot" />}</button>
@@ -125,7 +146,9 @@ export default function AdminLayout({ children }) {
                     <div className="adm-notif" role="menu">
                       <div className="adm-notif-h"><b>Notifications</b><button className="link-btn" onClick={() => setNotifs(ns => ns.map(n => ({ ...n, read: true })))}>Mark all read</button></div>
                       <div className="adm-notif-list">
-                        {notifs.map((nf, i) => (
+                        {notifs.length === 0
+                          ? <div style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--text-faint)', fontSize: 13.5 }}>No notifications yet.</div>
+                          : notifs.map((nf, i) => (
                           <button key={i} className={'adm-notif-item' + (nf.read ? '' : ' unread')} onClick={() => notifClick(i, nf)}>
                             <span className={'adm-notif-ic ' + nf.tint}><Icon name={nf.ic} size={15} /></span>
                             <div className="adm-notif-txt"><b>{nf.title}</b><small>{nf.body}</small><span className="adm-notif-time">{nf.time}</span></div>

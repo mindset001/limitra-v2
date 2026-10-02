@@ -136,6 +136,7 @@
 .nav-link.deals { color: var(--accent); font-weight: 700; }
 .nav-link.deals svg { transform: translateY(-2px); }
 .nav-link.soft { color: var(--text-faint); font-weight: 600; font-size: 13px; padding: 8px 9px; }
+.nav-badge-new { background: var(--accent); color: #fff; font-family: var(--font-display); font-weight: 700; font-size: 10px; letter-spacing: .03em; padding: 2px 6px; border-radius: var(--r-pill); line-height: 1.4; }
 
 /* collapse nav-bar category links at tablet-range widths (bar still shows >1024px) */
 @media (max-width: 1180px) {
@@ -146,6 +147,7 @@
 .mega { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border-bottom: 1px solid var(--border); box-shadow: var(--shadow-lg); z-index: 40; display: grid; grid-template-columns: 1fr 320px; gap: 28px; padding: 26px max(28px, calc((100vw - var(--maxw))/2 + 28px)); animation: megaIn .22s var(--ease); }
 @keyframes megaIn { from { opacity: 0; transform: translateY(-8px); } }
 .mega-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.mega-empty { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; min-height: 160px; color: var(--text-faint); font-size: 14px; text-align: center; }
 .mega-cat { display: flex; align-items: center; gap: 13px; padding: 13px; border-radius: var(--r-md); cursor: pointer; transition: background .15s; }
 .mega-cat:hover { background: var(--surface-2); }
 .mega-ic { width: 42px; height: 42px; border-radius: var(--r-sm); background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; flex: none; }
@@ -175,6 +177,7 @@
 .mm-sec { font-family: var(--font-display); font-weight: 700; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-faint); margin: 18px 0 6px; }
 .mm-sec:first-child { margin-top: 0; }
 .mm-link { display: flex; align-items: center; justify-content: space-between; padding: 13px 6px; border-radius: var(--r-sm); font-family: var(--font-display); font-weight: 600; font-size: 15px; cursor: pointer; color: var(--text); }
+.mm-empty { padding: 10px 6px; color: var(--text-faint); font-size: 13.5px; }
 .mm-link:hover { background: var(--surface-2); }
 .mm-link.mm-theme:hover { background: none; }
 .mm-link.mm-theme { gap: 16px; }

@@ -3,6 +3,7 @@
 import { Icon } from '@/components/icons/Icon';
 import { useStore } from '@/components/store/StoreProvider';
 import { Placeholder } from '@/components/ui/Shared';
+import { MICROSTORES } from '@/lib/microstoresData';
 
 const MS_TRUST = [
   ['package', 'No inventory required'],
@@ -41,20 +42,10 @@ const MS_STEPS = [
 const AFFILIATE_PERKS = ['Share a single product link', 'Earn on tracked sales'];
 const STORE_PERKS = ['Personalized storefront', 'Choose your niche & products', 'AI content studio', 'Track sales & earnings', 'Build your brand'];
 
-const FEATURED_STORES = [
-  { name: 'Tech Hub', slug: 'techhub', color: 'var(--navy)', items: ['Phones', 'Watch', 'Laptop'] },
-  { name: 'Glow Beauty', slug: 'glowbeauty', color: '#E0457B', items: ['Perfume', 'Palette', 'Skincare'] },
-  { name: 'Home Essentials', slug: 'homeplus', color: '#C9890A', items: ['Sofa', 'Blender', 'Cookware'] },
-  { name: "Amara's MicroStore", slug: 'amara', color: 'var(--orange)', items: ['Phones', 'Beauty', 'Bags'] },
-];
+const FEATURED_STORES = MICROSTORES.slice(0, 4);
 
 export function MicroStoresPage() {
-  const { go, toast } = useStore();
-  const scrollToFeatured = () => {
-    const el = document.getElementById('featured-stores');
-    if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 90, behavior: 'smooth' });
-  };
-  const comingSoon = () => toast('MicroStores are launching soon — create an account to join the waitlist.');
+  const { go } = useStore();
 
   return (
     <div className="page page-fade">
@@ -67,7 +58,7 @@ export function MicroStoresPage() {
             <p>Curate products, share your own storefront and earn on every delivered sale. Limitra still handles inventory, pricing, checkout, payment, fulfillment and returns — you just build the audience.</p>
             <div className="hero-cta">
               <button className="btn btn-accent btn-lg" onClick={() => go('auth', 'signup')}>Become a MicroStore Partner <Icon name="arrowr" size={18} /></button>
-              <button className="btn btn-ghost-light btn-lg" onClick={scrollToFeatured}>Explore MicroStores</button>
+              <button className="btn btn-ghost-light btn-lg" onClick={() => go('microstoresExplore')}>Explore MicroStores</button>
             </div>
             <div className="ms-hero-trust">
               {MS_TRUST.map(([ic, label]) => (
@@ -186,6 +177,7 @@ export function MicroStoresPage() {
               <div className="eyebrow">Explore</div>
               <h2>Featured MicroStores</h2>
             </div>
+            <a className="see-all" onClick={() => go('microstoresExplore')} style={{ cursor: 'pointer' }}>See all <Icon name="arrowr" size={15} /></a>
           </div>
           <div className="ms-stores">
             {FEATURED_STORES.map(s => (
@@ -195,9 +187,9 @@ export function MicroStoresPage() {
                   <div><b>{s.name}</b><small>limitra.com.ng/{s.slug}</small></div>
                 </div>
                 <div className="ms-store-thumbs">
-                  {s.items.map(it => <div key={it} className="ms-store-thumb"><Placeholder label={it} /></div>)}
+                  {s.products.slice(0, 4).map(p => <div key={p.id} className="ms-store-thumb"><Placeholder label={p.name.split(' ')[0]} product={{ tint: p.tint }} /></div>)}
                 </div>
-                <button className="btn btn-outline btn-sm btn-block" onClick={comingSoon}>View Store <Icon name="arrowr" size={14} /></button>
+                <button className="btn btn-outline btn-sm btn-block" onClick={() => go('microstore', s.slug)}>View Store <Icon name="arrowr" size={14} /></button>
               </div>
             ))}
           </div>

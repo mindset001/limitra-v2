@@ -14,7 +14,7 @@ export const ADMIN_ORDERS = [];
 
 export const ADMIN_NAV = [
 ['Overview', [['dashboard', 'Dashboard', 'grid'], ['analytics', 'Analytics', 'spark']]],
-['Catalog', [['products', 'Products', 'bag'], ['inventory', 'Inventory', 'package'], ['orders', 'Orders', 'truck'], ['coupons', 'Coupons & Promos', 'tag']]],
+['Catalog', [['products', 'Products', 'bag'], ['sourcing', 'Sourcing', 'search'], ['inventory', 'Inventory', 'package'], ['orders', 'Orders', 'truck'], ['coupons', 'Coupons & Promos', 'tag']]],
 ['People', [['customers', 'Customers', 'user'], ['affiliates', 'Affiliates', 'share'], ['referrals', 'Referrals', 'dollar']]],
 ['Engagement', [['spin', 'Spin & Win', 'gift'], ['videos', 'Videos', 'video'], ['elo', 'Elo AI', 'headset']]],
 ['System', [['cms', 'Content', 'edit'], ['roles', 'Roles & Access', 'lock'], ['reports', 'Reports', 'download']]]];

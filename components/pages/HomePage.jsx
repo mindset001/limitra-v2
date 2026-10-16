@@ -495,6 +495,13 @@ function WhyLimitra() {
 
 export function HomePage() {
   useReveal();
+  // Subscribes to StoreProvider's context so this re-renders once the async
+  // catalog load populates PRODUCTS — see ShopPage's identical useStore() call
+  // for why: a component that reads PRODUCTS directly in its own body (not via
+  // a memo, not via a prop from somewhere else) only sees fresh data on a
+  // render it actually runs itself, and nothing else here was making this one
+  // run again after the catalog finished loading.
+  useStore();
   const trending = PRODUCTS.filter((p) => p.bestseller).slice(0, 5);
   const arrivals = PRODUCTS.filter((p) => p.badges.includes('new')).concat(PRODUCTS.slice(0, 5)).slice(0, 5);
   return (

@@ -5,7 +5,7 @@ import { Icon } from '@/components/icons/Icon';
 import { useStore } from '@/components/store/StoreProvider';
 import { Modal, AddressForm, CardForm, CardBrandMark, Field } from '@/components/forms/Shared';
 import { Thumb, REAL_IMG, QtyStepper, Breadcrumbs, EmptyState } from '@/components/ui/Shared';
-import { naira, byId } from '@/lib/data';
+import { naira, byId, unitPriceOf } from '@/lib/data';
 import { ordersApi } from '@/lib/api/endpoints';
 import { messageFrom } from '@/lib/api/errors';
 
@@ -14,7 +14,7 @@ const FREE_SHIP = 150000;
 
 export function OrderSummary({ items, promo, ship, children, cta, onCta, ctaIcon, useCredit, onToggleCredit }) {
   const { referral } = useStore();
-  const sub = items.reduce((s, it) => s + (byId(it.id)?.price || 0) * it.qty, 0);
+  const sub = items.reduce((s, it) => s + unitPriceOf(it, byId(it.id)) * it.qty, 0);
   const disc = promo ? Math.round(sub * promo.pct) : 0;
   const shipping = ship == null ? 0 : ship;
   const beforeCredit = Math.max(0, sub - disc) + shipping;
@@ -133,9 +133,17 @@ export function CartPage() {
                   </div>
                 </div>
                 <div className="ci-price">
-                  {p.was ? <small className="ci-was">{naira(p.was * it.qty)}</small> : null}
-                  <b className={p.was ? 'sale' : ''}>{naira(p.price * it.qty)}</b>
-                  {p.was ? <small className="ci-save">Save {naira((p.was - p.price) * it.qty)}</small> : (it.qty > 1 ? <small className="muted">{naira(p.price)} each</small> : null)}
+                  {(() => {
+                    const unit = unitPriceOf(it, p);
+                    const onSale = p.was > unit;
+                    return (
+                      <>
+                        {onSale ? <small className="ci-was">{naira(p.was * it.qty)}</small> : null}
+                        <b className={onSale ? 'sale' : ''}>{naira(unit * it.qty)}</b>
+                        {onSale ? <small className="ci-save">Save {naira((p.was - unit) * it.qty)}</small> : (it.qty > 1 ? <small className="muted">{naira(unit)} each</small> : null)}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             );
@@ -382,7 +390,7 @@ export function CheckoutPage() {
                     <div className="rev-item" key={it.key}>
                       <div className="rev-item-thumb"><Thumb product={p} src={REAL_IMG[p.id]} /></div>
                       <span className="rev-item-name">{p.name}<small className="muted"> × {it.qty}</small></span>
-                      <b>{naira(p.price * it.qty)}</b>
+                      <b>{naira(unitPriceOf(it, p) * it.qty)}</b>
                     </div>
                   ); })}
                 </div>

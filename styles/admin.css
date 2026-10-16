@@ -429,3 +429,29 @@ tr.row-flash { box-shadow: inset 3px 0 0 var(--primary); }
   .adm-table td[data-label]::before { content: attr(data-label); font-family: var(--font-display); font-weight: 700; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-faint); flex: none; text-align: left; }
   .adm-table td > * { min-width: 0; text-align: right; }
 }
+
+/* variant options (with per-option price override) */
+.adm-variant-opts { display: flex; flex-direction: column; gap: 6px; }
+.adm-variant-opt-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-2); }
+.adm-variant-swatch { width: 16px; height: 16px; border-radius: 50%; flex: none; border: 1px solid var(--border-2); }
+.adm-variant-opt-label { flex: 1; font-size: 13.5px; font-weight: 600; }
+.adm-variant-opt-price { display: flex; align-items: center; gap: 4px; background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r-sm); padding: 0 8px; }
+.adm-variant-opt-price .muted { font-size: 12.5px; }
+.adm-variant-opt-price input { width: 92px; border: none; background: none; outline: none; padding: 7px 0; font-size: 13px; font-family: inherit; color: var(--text); }
+.adm-variant-opt-row > button { color: var(--text-faint); flex: none; }
+.adm-variant-opt-row > button:hover { color: var(--red); }
+
+/* sourcing */
+.src-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.src-card { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.src-card-thumb { position: relative; aspect-ratio: 1; background: var(--surface-2); }
+.src-card-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.src-card-supplier { position: absolute; top: 8px; left: 8px; text-transform: capitalize; }
+.src-card-unavail { position: absolute; top: 8px; right: 8px; }
+.src-card-body { padding: 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.src-card-body b { font-size: 13.5px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.src-card-price { font-family: var(--font-display); font-weight: 700; font-size: 15px; }
+.src-card-import { margin-top: auto; }
+@media (max-width: 560px) {
+  .src-grid { grid-template-columns: repeat(2, 1fr); }
+}

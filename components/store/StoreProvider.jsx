@@ -3,7 +3,8 @@
    Routing changes from a hash router to next/navigation; everything else is unchanged. */
 import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { naira, byId, REAL_IMG, slugify, setCategories, setSubcats, setProducts } from '@/lib/data';
+import { naira, byId, REAL_IMG, slugify, setCategories, setSubcats, setProducts, unitPriceOf } from '@/lib/data';
+import { applyStoredVariants } from '@/lib/variantsStore';
 import { routeFor, parseRoute } from '@/lib/routes';
 import { getToken, clearTokens } from '@/lib/auth';
 import { authApi, profileApi, cartApi, cartItemsApi, favoritesApi, categoriesApi, productsApi } from '@/lib/api/endpoints';
@@ -177,7 +178,14 @@ export function StoreProvider({ children }) {
 
       const rawProducts = Array.isArray(rawProductsRes) ? rawProductsRes : rawProductsRes?.items || rawProductsRes?.data || [];
       const mappedProducts = rawProducts.map(p => {
-        const cat = catsById[p.category_id];
+        // GET /products nests a full category object (id/name/slug/...) on
+        // each product — there's no flat `category_id` field on the read side
+        // (that's only what POST/PATCH accept for writing). Looking this up
+        // via `catsById` (keyed by id) rather than trusting p.category.slug
+        // directly keeps the category's `tint` in sync with the one computed
+        // above for CATEGORIES, but falls back to the nested slug if for any
+        // reason this product's category isn't in that list.
+        const cat = catsById[p.category?.id];
         if (Array.isArray(p.images) && p.images[0]) REAL_IMG[p.id] = p.images[0];
         return {
           id: p.id,
@@ -188,7 +196,7 @@ export function StoreProvider({ children }) {
           was: Number(p.compare_at_price) || 0,
           off: 0,
           stock: p.stock ?? 0,
-          category: cat?.slug || 'all',
+          category: cat?.slug || p.category?.slug || 'all',
           description: p.description || '',
           rating: Number(p.rating) || 0,
           reviews: Number(p.reviews_count ?? p.reviews) || 0,
@@ -200,11 +208,14 @@ export function StoreProvider({ children }) {
 
       setCategories(mappedCats);
       setSubcats(subcats);
-      setProducts(mappedProducts);
+      setProducts(applyStoredVariants(mappedProducts));
       setCatalogVersion(v => v + 1);
     } catch (e) {
       // leave the catalog empty — every page already renders a graceful
-      // "coming soon" state for CATEGORIES/PRODUCTS.length === 0
+      // "coming soon" state for CATEGORIES/PRODUCTS.length === 0. Logged (not
+      // swallowed silently) — a silent catch here is exactly what let the
+      // reference-identity bug above go undiagnosed for as long as it did.
+      console.error('[catalog] load failed:', e);
     } finally {
       setCatalogLoading(false);
     }
@@ -300,16 +311,20 @@ export function StoreProvider({ children }) {
      shape (undocumented in the API spec). `opts.variants` (a per-product-defined
      map of group name -> {label, hex?}, from ProductPage) is UI-only: the backend
      cart has no variant fields, so it's never sent and won't survive a reload
-     once signed in. */
+     once signed in. `opts.unitPrice` (ProductPage's effectivePrice() result, which
+     already accounts for any per-variant price override) is snapshotted onto the
+     guest-cart line so a later price change doesn't retroactively reprice
+     something already sitting in someone's cart — see unitPriceOf() in lib/data.js. */
   const addToCart = useCallback(async (product, opts = {}, qty = 1) => {
     const variants = opts.variants || {};
+    const unitPrice = opts.unitPrice ?? product.price;
     if (!isAuthenticated) {
       const variantKey = Object.keys(variants).sort().map(k => `${k}:${variants[k].label}`).join('|');
       const key = [product.id, variantKey].join('|');
       setLocalCart(c => {
         const ex = c.find(i => i.key === key);
         if (ex) return c.map(i => i.key === key ? { ...i, qty: i.qty + qty } : i);
-        return [...c, { key, id: product.id, qty, variants }];
+        return [...c, { key, id: product.id, qty, variants, unitPrice }];
       });
       toast(`Added to cart · ${product.name.split(',')[0]}`);
       return;
@@ -418,7 +433,7 @@ export function StoreProvider({ children }) {
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
   const cartTotal = isAuthenticated
     ? remoteCartItems.reduce((s, it) => s + Number(it.price ?? it.unit_price ?? it.product?.price ?? 0) * (it.quantity || 0), 0)
-    : localCart.reduce((s, i) => s + (byId(i.id)?.price || 0) * i.qty, 0);
+    : localCart.reduce((s, i) => s + unitPriceOf(i, byId(i.id)) * i.qty, 0);
 
   const value = {
     theme, toggleTheme, route, go,

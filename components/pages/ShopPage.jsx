@@ -11,7 +11,7 @@ import { PRODUCTS, CATEGORIES, SUBCATS, naira, byCat } from '@/lib/data';
 const SORTS = [['relevance', 'Most relevant'], ['low', 'Price: low to high'], ['high', 'Price: high to low'], ['rating', 'Top rated'], ['new', 'Newest']];
 
 // Windowed page list: 1 … around(current) … last, with ellipses.
-function pagerList(cur, total) {
+export function pagerList(cur, total) {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
   const out = [1];
   let lo = Math.max(2, cur - 1), hi = Math.min(total - 1, cur + 1);
@@ -24,7 +24,7 @@ function pagerList(cur, total) {
   return out;
 }
 
-function priceSort(a, b, s) {
+export function priceSort(a, b, s) {
   if (s === 'low') return a.price - b.price;
   if (s === 'high') return b.price - a.price;
   if (s === 'rating') return b.rating - a.rating;
@@ -32,7 +32,7 @@ function priceSort(a, b, s) {
   return b.reviews - a.reviews;
 }
 
-function FilterPanel({ f, setF, brands, priceCap }) {
+export function FilterPanel({ f, setF, brands, priceCap }) {
   const toggleBrand = b => setF(s => ({ ...s, brands: s.brands.includes(b) ? s.brands.filter(x => x !== b) : [...s.brands, b] }));
   return (
     <div className="filters">
@@ -199,13 +199,26 @@ export function ListCard({ product }) {
 }
 
 export function ShopPage({ cat, sub }) {
+  // Subscribes this component to StoreProvider's context so it re-renders once
+  // the async catalog load (StoreProvider.loadCatalog) populates PRODUCTS —
+  // without this, `base` below is computed once on first render, when the
+  // catalog is still empty, and never recomputes again even after it loads,
+  // since nothing else here triggers a re-render of THIS component (ShopShell,
+  // its child, calls useStore() too, but re-rendering it doesn't re-run the
+  // `base` computation that lives up here in its parent).
+  useStore();
   const isDeals = cat === 'deals';
   const isNew = cat === 'new';
   const isTrending = cat === 'trending';
   const isAll = cat === 'all' || !cat;
-  const isFashion = cat === 'fashion';
   const meta = CATEGORIES.find(c => c.slug === cat);
-  let base = isDeals ? PRODUCTS.filter(p => p.off > 0) : isNew ? PRODUCTS.filter(p => (p.badges || []).includes('new')) : isTrending ? PRODUCTS.filter(p => p.bestseller) : isAll ? PRODUCTS : isFashion ? PRODUCTS.filter(p => p.category === 'womens' || p.category === 'mens') : byCat(cat);
+  // 'fashion' used to be a virtual rollup with no real backend category of its
+  // own (hardcoded here as "mens + womens combined"), back when PRODUCTS was
+  // empty and that was just an assumption baked into the legacy mock data. The
+  // real catalog now has an actual top-level "fashion" category, separate from
+  // "mens"/"womens" — treating it as a normal category (byCat below) instead
+  // of special-casing it is what actually shows its real products now.
+  let base = isDeals ? PRODUCTS.filter(p => p.off > 0) : isNew ? PRODUCTS.filter(p => (p.badges || []).includes('new')) : isTrending ? PRODUCTS.filter(p => p.bestseller) : isAll ? PRODUCTS : byCat(cat);
 
   const subInfo = sub ? (SUBCAT_INDEX || {})[cat + '/' + sub] : null;
   if (subInfo) {
@@ -218,8 +231,8 @@ export function ShopPage({ cat, sub }) {
     }
   }
 
-  const title = subInfo ? subInfo.label : isDeals ? 'Flash Deals & Offers' : isNew ? 'New Arrivals' : isTrending ? 'Trending This Week' : isAll ? 'All Products' : isFashion ? 'Fashion' : (meta?.name || 'Shop');
-  const eyebrow = subInfo ? ((meta?.name) || (isFashion ? 'Fashion' : 'Category')) : isDeals ? 'Limited time' : isNew ? 'Just landed' : isTrending ? 'Best sellers' : (meta || isFashion) ? 'Category' : 'Catalog';
+  const title = subInfo ? subInfo.label : isDeals ? 'Flash Deals & Offers' : isNew ? 'New Arrivals' : isTrending ? 'Trending This Week' : isAll ? 'All Products' : (meta?.name || 'Shop');
+  const eyebrow = subInfo ? ((meta?.name) || 'Category') : isDeals ? 'Limited time' : isNew ? 'Just landed' : isTrending ? 'Best sellers' : meta ? 'Category' : 'Catalog';
 
   return (
     <>
@@ -249,14 +262,19 @@ export function CategoryBanner({ meta }) {
 }
 
 export function SearchPage({ q }) {
-  const { go, query } = useStore();
+  const { go, query, catalogVersion } = useStore();
   const term = q || query || 'all';
   const clean = term.toLowerCase().trim();
   const isBlank = !clean || clean === 'all';
+  // catalogVersion isn't read inside — it's here so this recomputes once the
+  // async catalog load populates PRODUCTS, instead of staying memoized on the
+  // empty result from whichever render happened to run first (same bug as
+  // ShopPage's `base`, just via a stale useMemo instead of a non-subscribing
+  // parent — see ShopPage's own useStore() call above for the other half).
   const results = useMemo(() => {
     if (isBlank) return PRODUCTS;
     return PRODUCTS.filter(p => (p.name + ' ' + p.brand + ' ' + p.category + ' ' + p.shot).toLowerCase().includes(clean));
-  }, [clean]);
+  }, [clean, catalogVersion]);
   const history = ['gaming laptop', 'wireless earbuds', 'smartwatch'];
   const popular = ['Apex 14 Pro', 'Power bank', '4K Monitor', 'Drone', 'Mechanical keyboard'];
 

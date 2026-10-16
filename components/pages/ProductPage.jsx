@@ -7,7 +7,7 @@ import { useStore } from '@/components/store/StoreProvider';
 import { Thumb, REAL_IMG, Placeholder, Stars, QtyStepper, Breadcrumbs, SectionHead, ProductCard, EmptyState } from '@/components/ui/Shared';
 import { ShareButton } from '@/components/share/Share';
 import { VideoStage, VID_POSTER, VIDEOS } from '@/components/video/Video';
-import { CATEGORIES, naira, byId, bySlug, byCat } from '@/lib/data';
+import { CATEGORIES, naira, byId, bySlug, byCat, effectivePrice } from '@/lib/data';
 
 function Gallery({ product, variantKey }) {
   const [active, setActive] = useState(0);
@@ -129,14 +129,15 @@ export function ProductPage({ id }) {
   }
 
   const variantKey = JSON.stringify(selected);
+  const price = effectivePrice(product, selected);
   const buy = (checkout) => {
     const variants = {};
     (product.variants || []).forEach(g => {
       const sel = selected[g.name];
       if (sel == null) return;
-      variants[g.name] = g.type === 'color' ? { label: sel.name, hex: sel.hex } : { label: sel };
+      variants[g.name] = g.type === 'color' ? { label: sel.name, hex: sel.hex } : { label: sel.label };
     });
-    addToCart(product, { variants }, qty);
+    addToCart(product, { variants, unitPrice: price }, qty);
     if (checkout) go('checkout');
   };
 
@@ -161,8 +162,8 @@ export function ProductPage({ id }) {
           </div>
 
           <div className="pdp-price">
-            <span className="now">{naira(product.price)}</span>
-            {product.was > 0 && <><span className="was">{naira(product.was)}</span><span className="badge badge-sale">Save {naira(product.was - product.price)}</span></>}
+            <span className="now">{naira(price)}</span>
+            {product.was > price && <><span className="was">{naira(product.was)}</span><span className="badge badge-sale">Save {naira(product.was - price)}</span></>}
           </div>
 
           {(product.variants || []).map(g => (
@@ -172,7 +173,7 @@ export function ProductPage({ id }) {
                   <div className="v-label">{g.name}: <b>{selected[g.name]?.name}</b></div>
                   <div className="swatches">
                     {g.options.map(c => (
-                      <button key={c.name} className={'swatch' + (selected[g.name]?.name === c.name ? ' on' : '')} style={{ '--sw': c.hex }} title={c.name} onClick={() => setSelected(s => ({ ...s, [g.name]: c }))}>
+                      <button key={c.name} className={'swatch' + (selected[g.name]?.name === c.name ? ' on' : '')} style={{ '--sw': c.hex }} title={c.price > 0 ? `${c.name} · ${naira(c.price)}` : c.name} onClick={() => setSelected(s => ({ ...s, [g.name]: c }))}>
                         <span style={{ background: c.hex }} />
                       </button>
                     ))}
@@ -182,8 +183,10 @@ export function ProductPage({ id }) {
                 <>
                   <div className="v-label">{g.name}</div>
                   <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-                    {g.options.map(o => (
-                      <button key={o} className={'chip' + (selected[g.name] === o ? ' on' : '')} onClick={() => setSelected(s => ({ ...s, [g.name]: o }))}>{o}</button>
+                    {g.options.map((o, oi) => (
+                      <button key={oi} className={'chip' + (selected[g.name] === o ? ' on' : '')} onClick={() => setSelected(s => ({ ...s, [g.name]: o }))}>
+                        {o.label}{o.price > 0 && <small className="muted" style={{ marginLeft: 5 }}>{naira(o.price)}</small>}
+                      </button>
                     ))}
                   </div>
                 </>
@@ -209,7 +212,7 @@ export function ProductPage({ id }) {
             <span className="afb-logo"><img src="/assets/logo-icon.png" alt="Limitra" /></span>
             <div className="afb-copy">
               <b>Affiliate earn for <span className="afb-brand">Limitra</span></b>
-              <span className="afb-earn">Earn up to <b>{naira(Math.round(product.price * 0.15))}</b> per sale <Icon name="info" size={13} /></span>
+              <span className="afb-earn">Earn up to <b>{naira(Math.round(price * 0.15))}</b> per sale <Icon name="info" size={13} /></span>
               <small>Tap to learn more and earn</small>
             </div>
             <span className="afb-cta"><span className="afb-cta-ic"><Icon name="sort" size={16} /></span><span className="afb-cta-txt">View earnings<br />&amp; tools</span><Icon name="chevright" size={16} /></span>

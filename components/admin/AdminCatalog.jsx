@@ -7,9 +7,11 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Icon } from '@/components/icons/Icon';
 import { Thumb, REAL_IMG } from '@/components/ui/Shared';
+import { useStore } from '@/components/store/StoreProvider';
 import { naira, PRODUCTS, CATEGORIES } from '@/lib/data';
-import { productsApi, categoriesApi, adminProductsApi } from '@/lib/api/endpoints';
-import { messageFrom } from '@/lib/api/errors';
+import { getVariants, setVariants, applyStoredVariants } from '@/lib/variantsStore';
+import { productsApi, categoriesApi, adminProductsApi, sourcingApi } from '@/lib/api/endpoints';
+import { messageFrom, fieldErrorsFrom } from '@/lib/api/errors';
 import { Kpi, STATUS_CLS } from '@/components/charts/Charts';
 import { useAdminToast } from './AdminToastContext';
 import { AdmHead, Pager, usePager, AdmSelect, AdmDate, ADMIN_ORDERS, useHighlight } from './AdminShared';
@@ -33,7 +35,7 @@ const mapAdminProduct = (p) => ({
   category: p.category?.slug || 'all',
   status: p.status || 'draft',
   desc: p.description || '',
-  variants: [],
+  variants: getVariants(p.id),
   _raw: p,
 });
 
@@ -80,7 +82,7 @@ export function AdminProducts({ editId }) {
     const p = items.find(x => String(x.id) === String(editId));
     if (!p) return;
     deepLinkOpened.current = true;
-    setEditing({ id: p.id, name: p.name, brand: p.brand, price: p.price, category: p.category, _stock: p.stock, _raw: p._raw });
+    setEditing({ id: p.id, name: p.name, brand: p.brand, price: p.price, category: p.category, _stock: p.stock, variants: p.variants, _raw: p._raw });
   }, [editId, items]);
   const closeEditing = () => { setEditing(null); router.replace('/admin/products'); };
 
@@ -123,7 +125,7 @@ export function AdminProducts({ editId }) {
                 <span className={'adm-pill ' + (p.stock === 0 ? 'bad' : p.stock < 10 ? 'warn' : 'ok')}>{statusOf(p.stock)}</span>
                 <span className={'adm-pill ' + (p.status === 'published' ? 'ok' : 'muted')}>{p.status === 'published' ? 'Published' : 'Draft'}</span>
               </td>
-              <td><div className="adm-rowact"><button title="Edit" onClick={() => { setEditing({ id: p.id, name: p.name, brand: p.brand, price: p.price, category: p.category, _stock: p.stock, _raw: p._raw }); router.replace('/admin/products/' + p.id); }}><Icon name="edit" size={15} /></button><button className="del" title="Delete" onClick={async () => {
+              <td><div className="adm-rowact"><button title="Edit" onClick={() => { setEditing({ id: p.id, name: p.name, brand: p.brand, price: p.price, category: p.category, _stock: p.stock, variants: p.variants, _raw: p._raw }); router.replace('/admin/products/' + p.id); }}><Icon name="edit" size={15} /></button><button className="del" title="Delete" onClick={async () => {
                 try { await productsApi.remove(p.id); } catch (e) { t(messageFrom(e)); return; }
                 setItems(list => list.filter(x => x.id !== p.id));
                 t('Product deleted');
@@ -136,13 +138,16 @@ export function AdminProducts({ editId }) {
         const catObj = [...CATEGORIES, ...ADMIN_EXTRA_CATS].find(c => c.slug === d.category);
         const body = { category_id: catObj?.id, name: d.name.trim(), description: d.desc || '', price: Number(d.price) || 0, stock: Number(d._stock) || 0 };
         try {
+          let productId = d.id;
           if (d._new) {
-            await productsApi.create(body);
+            const created = await productsApi.create(body);
+            productId = created?.id;
             t('Product created as a draft — publish it from the backend to show on the storefront.');
           } else {
             await productsApi.update(d.id, body);
             t('Changes saved');
           }
+          if (productId != null) setVariants(productId, d.variants || []);
           await loadProducts();
           closeEditing();
         } catch (e) {
@@ -185,15 +190,21 @@ function BulkUploadModal({ onClose, onDone }) {
 function VariantGroupRow({ group, onChange, onRemove }) {
   const [name, setName] = useState('');
   const [hex, setHex] = useState('#0438B6');
+  const label = (o) => group.type === 'color' ? o.name : o.label;
   const addOption = () => {
     const v = name.trim();
     if (!v) return;
-    const exists = group.options.some(o => (group.type === 'color' ? o.name : o) === v);
+    const exists = group.options.some(o => label(o) === v);
     if (exists) return;
-    onChange({ options: [...group.options, group.type === 'color' ? { name: v, hex } : v] });
+    const next = group.type === 'color' ? { name: v, hex, price: null } : { label: v, price: null };
+    onChange({ options: [...group.options, next] });
     setName('');
   };
   const removeOption = (oi) => onChange({ options: group.options.filter((_, i) => i !== oi) });
+  const updateOptionPrice = (oi, raw) => {
+    const price = raw === '' ? null : Math.max(0, Number(raw) || 0);
+    onChange({ options: group.options.map((o, i) => i === oi ? { ...o, price } : o) });
+  };
   return (
     <div className="adm-variant-group" style={{ border: '1.5px solid var(--border)', borderRadius: 'var(--r-md)', padding: 14, marginBottom: 12 }}>
       <div className="adm-field-row" style={{ marginBottom: 10 }}>
@@ -202,16 +213,21 @@ function VariantGroupRow({ group, onChange, onRemove }) {
           <AdmSelect value={group.type} options={[{ value: 'text', label: 'Text options' }, { value: 'color', label: 'Colour swatches' }]} onChange={v => onChange({ type: v, options: [] })} />
         </label>
       </div>
-      <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+      <div className="adm-variant-opts" style={{ marginBottom: 10 }}>
         {group.options.map((o, oi) => (
-          <span key={oi} className="adm-chip" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            {group.type === 'color' && <i style={{ width: 12, height: 12, borderRadius: '50%', background: o.hex, display: 'inline-block' }} />}
-            {group.type === 'color' ? o.name : o}
-            <button type="button" onClick={() => removeOption(oi)} aria-label="Remove option" style={{ display: 'inline-flex', color: 'inherit' }}><Icon name="close" size={11} /></button>
-          </span>
+          <div key={oi} className="adm-variant-opt-row">
+            {group.type === 'color' && <i className="adm-variant-swatch" style={{ background: o.hex }} />}
+            <span className="adm-variant-opt-label">{label(o)}</span>
+            <div className="adm-variant-opt-price">
+              <span className="muted">₦</span>
+              <input type="number" min="0" step="100" placeholder="Base price" value={o.price ?? ''} onChange={e => updateOptionPrice(oi, e.target.value)} />
+            </div>
+            <button type="button" onClick={() => removeOption(oi)} aria-label="Remove option"><Icon name="close" size={13} /></button>
+          </div>
         ))}
         {group.options.length === 0 && <span className="muted" style={{ fontSize: 12.5 }}>No options yet</span>}
       </div>
+      <p className="muted" style={{ fontSize: 11.5, marginBottom: 10, marginTop: -4 }}>Leave an option's price blank to use the product's base price when it's selected.</p>
       <div className="adm-field-row" style={{ alignItems: 'flex-end' }}>
         <label className="adm-field" style={{ flex: 1 }}>
           <span>{group.type === 'color' ? 'Add colour' : 'Add option'}</span>
@@ -302,6 +318,157 @@ function ProductEditDrawer({ draft, onClose, onSave }) {
           <button className="adm-btn primary" disabled={!f.name.trim() || !f.brand.trim()} onClick={() => onSave(f)}>{f._new ? 'Create product' : 'Save changes'}</button>
         </div>
       </aside>
+    </>
+  );
+}
+
+/* ---------- SOURCING ---------- */
+const SUPPLIERS = ['all', 'ebay', 'amazon', 'aliexpress'];
+
+function fmtUsd(price, currency) {
+  const n = Number(price);
+  if (!Number.isFinite(n)) return price;
+  return (currency === 'USD' || !currency ? '$' : currency + ' ') + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function SourceResultCard({ item, categorySlug, onCategoryChange, cats, onImport, importing, imported }) {
+  const done = imported || item.imported;
+  const effectiveSlug = categorySlug || cats[0]?.slug;
+  return (
+    <div className="panel src-card">
+      <div className="src-card-thumb">
+        {item.image_url ? <img src={item.image_url} alt="" loading="lazy" /> : <div className="ph"><span>no image</span></div>}
+        <span className="adm-pill muted src-card-supplier">{item.supplier}</span>
+        {!item.available && <span className="adm-pill bad src-card-unavail">Unavailable</span>}
+      </div>
+      <div className="src-card-body">
+        <b title={item.title}>{item.title}</b>
+        <span className="src-card-price">{fmtUsd(item.price, item.currency)}</span>
+        <a className="link-btn" href={item.product_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12.5 }}>View on {item.supplier} <Icon name="arrowr" size={12} /></a>
+        {cats.length > 0 ? (
+          <AdmSelect value={effectiveSlug} options={cats.map(c => ({ value: c.slug, label: c.name }))} onChange={onCategoryChange} />
+        ) : (
+          <p className="muted" style={{ fontSize: 12 }}>Add a category under Products first.</p>
+        )}
+        <button className="adm-btn primary src-card-import" disabled={done || importing || !effectiveSlug} onClick={onImport}>
+          {done ? <><Icon name="check" size={14} stroke={3} /> Imported</> : importing ? 'Importing…' : 'Import to catalog'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function AdminSourcing() {
+  const addToast = useAdminToast();
+  const [q, setQ] = useState('');
+  const [supplier, setSupplier] = useState('all');
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [results, setResults] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [warnings, setWarnings] = useState([]);
+  const [categoryFor, setCategoryFor] = useState({}); // supplier_id -> category slug
+  const [importingId, setImportingId] = useState(null);
+  const [importedIds, setImportedIds] = useState({}); // supplier_id -> true, this session
+
+  const cats = [...CATEGORIES, ...ADMIN_EXTRA_CATS];
+
+  const runSearch = async (toPage) => {
+    const term = q.trim();
+    if (!term) { addToast('Enter a search term'); return; }
+    setLoading(true);
+    try {
+      const res = await sourcingApi.search({ q: term, page: toPage || 1, ...(supplier !== 'all' ? { supplier } : {}) });
+      setResults(res?.products || []);
+      setTotal(res?.total || 0);
+      setWarnings(res?.warnings || []);
+      setPage(toPage || 1);
+      setSearched(true);
+    } catch (e) {
+      addToast(messageFrom(e));
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const importItem = async (item) => {
+    const slug = categoryFor[item.supplier_id] || cats[0]?.slug;
+    const cat = cats.find(c => c.slug === slug);
+    if (!cat) { addToast('Choose a category first'); return; }
+    setImportingId(item.supplier_id);
+    try {
+      await sourcingApi.source({
+        supplier: item.supplier,
+        supplier_id: item.supplier_id,
+        external_product_id: item.external_product_id,
+        category_id: cat.id,
+        title: item.title,
+        price: item.price,
+        currency: item.currency,
+        image_url: item.image_url,
+        product_url: item.product_url,
+      });
+      setImportedIds(m => ({ ...m, [item.supplier_id]: true }));
+      addToast('Imported — it lands as a draft product (see Products).');
+    } catch (e) {
+      const fe = fieldErrorsFrom(e);
+      const detail = Object.values(fe)[0];
+      addToast(messageFrom(e) + (detail ? ': ' + detail : ''));
+    } finally {
+      setImportingId(null);
+    }
+  };
+
+  return (
+    <>
+      <AdmHead title="Sourcing" sub="Search external suppliers and import products straight into your catalog" />
+      <form className="adm-filters" onSubmit={e => { e.preventDefault(); runSearch(1); }}>
+        <div className="adm-mini-search" style={{ flex: 1, minWidth: 220 }}>
+          <Icon name="search" size={16} className="muted" />
+          <input placeholder="Search eBay, Amazon…" value={q} onChange={e => setQ(e.target.value)} />
+        </div>
+        <div className="adm-filters-r">
+          <AdmSelect compact icon="filter" title="Supplier" value={supplier} options={SUPPLIERS.map(s => ({ value: s, label: s === 'all' ? 'All suppliers' : s }))} onChange={setSupplier} />
+          <button className="adm-btn primary" type="submit" disabled={loading}>{loading ? 'Searching…' : 'Search'}</button>
+        </div>
+      </form>
+
+      {warnings.length > 0 && (
+        <div className="adm-note" style={{ marginBottom: 16 }}><Icon name="info" size={15} /> {warnings.join(' · ')}</div>
+      )}
+
+      {!searched ? (
+        <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--text-faint)' }}>Search a product name to pull live listings from external suppliers.</div>
+      ) : loading ? (
+        <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--text-faint)' }}>Searching…</div>
+      ) : results.length === 0 ? (
+        <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--text-faint)' }}>No results for “{q}”.</div>
+      ) : (
+        <>
+          <p className="muted" style={{ fontSize: 13, margin: '0 0 14px' }}>{total.toLocaleString()} results found · showing page {page}</p>
+          <div className="src-grid">
+            {results.map(item => (
+              <SourceResultCard
+                key={item.supplier_id}
+                item={item}
+                cats={cats}
+                categorySlug={categoryFor[item.supplier_id]}
+                onCategoryChange={v => setCategoryFor(m => ({ ...m, [item.supplier_id]: v }))}
+                onImport={() => importItem(item)}
+                importing={importingId === item.supplier_id}
+                imported={!!importedIds[item.supplier_id]}
+              />
+            ))}
+          </div>
+          <div className="row" style={{ gap: 10, justifyContent: 'center', marginTop: 24 }}>
+            <button className="adm-btn ghost" disabled={page === 1 || loading} onClick={() => runSearch(page - 1)}><Icon name="chevleft" size={15} /> Prev</button>
+            <span className="muted" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13.5, alignSelf: 'center' }}>Page {page}</span>
+            <button className="adm-btn ghost" disabled={loading} onClick={() => runSearch(page + 1)}>Next <Icon name="chevright" size={15} /></button>
+          </div>
+        </>
+      )}
     </>
   );
 }
@@ -495,6 +662,11 @@ function CouponModal({ draft, onClose, onSave }) {
 /* ---------- INVENTORY ---------- */
 export function AdminInventory() {
   const addToast = useAdminToast();
+  // Reads the storefront's PRODUCTS directly below (not AdminProducts' own
+  // adminProductsApi-backed `items` state) — subscribes to context so it
+  // re-renders once the async catalog load populates it, same reasoning as
+  // ShopPage/HomePage's useStore() calls.
+  useStore();
   const highlight = useSearchParams().get('highlight');
   useHighlight(highlight);
   const [q, setQ] = useState('');

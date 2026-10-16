@@ -6,7 +6,7 @@ import { Icon } from '@/components/icons/Icon';
 import { Logo } from '@/components/icons/Icon';
 import { useStore } from '@/components/store/StoreProvider';
 import { EmptyState, QtyStepper, Thumb, REAL_IMG } from '@/components/ui/Shared';
-import { naira, CATEGORIES, SUBCATS as ALL_SUBCATS, PRODUCTS, byId } from '@/lib/data';
+import { naira, CATEGORIES, SUBCATS as ALL_SUBCATS, PRODUCTS, byId, unitPriceOf } from '@/lib/data';
 
 export const NAV = [
   { slug: 'new', name: 'New Arrivals' },
@@ -273,7 +273,7 @@ function MiniCart({ open, onClose }) {
                       <div className="muted" style={{ fontSize: 12, fontFamily: 'var(--font-display)' }}>{Object.values(it.variants || {}).map(v => v.label).filter(Boolean).join(' · ')}</div>
                       <div className="row between" style={{ marginTop: 8 }}>
                         <QtyStepper size="sm" value={it.qty} onChange={(q) => setQty(it.key, q)} />
-                        <strong style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>{p ? naira(p.price * it.qty) : '—'}</strong>
+                        <strong style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>{p ? naira(unitPriceOf(it, p) * it.qty) : '—'}</strong>
                       </div>
                     </div>
                   </div>);
